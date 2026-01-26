@@ -16,8 +16,9 @@ blueprint_comment /--
 
 axiom Dusart_thm :
   ∀ x : ℝ,
-    x ≥ 89693 →
-      ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧ (p : ℝ) ≤ x + x / (log x) ^ (3 : ℝ)
+    x ≥ 468991632 →
+      ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧
+        (p : ℝ) ≤ x + x / (5000 * (log x) ^ (2 : ℝ))
 
 @[blueprint
   "sigma-def"
@@ -984,23 +985,28 @@ used on the \(p\)-side than the \(q\)-side to restore an asymptotic advantage.
 \end{remark}
 -/
 
-abbrev X₀ := 89693
+abbrev X₀ := 468991632
 
-lemma hsqrt_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) : √(n : ℝ) ≥ 89693 := by
-  simpa using sqrt_le_sqrt (by exact_mod_cast hn : (n : ℝ) ≥ 89693 ^ 2)
+lemma hsqrt_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) : √(n : ℝ) ≥ X₀ := by
+  simpa using sqrt_le_sqrt (by exact_mod_cast hn : (n : ℝ) ≥ X₀ ^ 2)
 
-lemma log_X₀_gt : Real.log X₀ > 11.4 := by
+lemma log_89693_gt : Real.log (89693 : ℝ) > 11.4 := by
   rw [gt_iff_lt, show (11.4 : ℝ) = 57 / (5 : ℕ) by norm_num, div_lt_iff₀ (by norm_num),
     mul_comm, ← Real.log_pow, Real.lt_log_iff_exp_lt (by norm_num), ← Real.exp_one_rpow]
   grw [Real.exp_one_lt_d9]
   norm_num
+
+lemma log_X₀_gt : Real.log X₀ > 11.4 := by
+  have hX : (89693 : ℝ) < X₀ := by norm_num [X₀]
+  have hlog : Real.log (89693 : ℝ) < Real.log X₀ := log_lt_log (by positivity) hX
+  linarith [log_89693_gt, hlog]
 
 lemma hlog {n : ℕ} (hn : n ≥ X₀ ^ 2) : log √(n : ℝ) ≥ 11.4 := by
   calc log √(n : ℝ) ≥ log (X₀ : ℝ) :=
         log_le_log (by grind : (0 : ℝ) < X₀) (hsqrt_ge hn)
     _ ≥ 11.4 := log_X₀_gt.le
 
-lemma hε_pos {n : ℕ} (hn : n ≥ X₀ ^ 2) : 0 < 1 + 1 / (log √(n : ℝ)) ^ 3 := by
+lemma hε_pos {n : ℕ} (hn : n ≥ X₀ ^ 2) : 0 < 1 + 1 / (5000 * (log √(n : ℝ)) ^ 2) := by
   positivity [hlog hn]
 
 lemma log_X₀_pos : 0 < Real.log X₀ := by linear_combination log_X₀_gt
@@ -1032,20 +1038,26 @@ inequality.  Here we will rely on the prime number theorem of Dusart \cite{Dusar
   (latexEnv := "lemma")]
 theorem exists_p_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     ∃ p : Fin 3 → ℕ, (∀ i, Nat.Prime (p i)) ∧ StrictMono p ∧
-      (∀ i, p i ≤ √(n : ℝ) * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ (i + 1 : ℝ)) ∧
+      (∀ i, p i ≤ √(n : ℝ) * (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ (i + 1 : ℝ)) ∧
       √(n : ℝ) < p 0 := by
   let x := √(n : ℝ)
   have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn)
   have hlog_pos : 0 < log x := by positivity [hlog hn]
-  set ε := 1 / (log x) ^ 3 with hε_def
+  set ε := 1 / (5000 * (log x) ^ 2) with hε_def
   have upper {y : ℝ} (hy : 0 < y) (hlog_ge : log y ≥ log x) {p : ℕ}
-      (hp : (p : ℝ) ≤ y + y / (log y) ^ (3 : ℝ)) : (p : ℝ) ≤ y * (1 + ε) := by
-    have h : y / (log y) ^ (3 : ℝ) ≤ y / (log x) ^ (3 : ℝ) :=
-      div_le_div_of_nonneg_left hy.le (rpow_pos_of_pos hlog_pos 3)
-        (rpow_le_rpow hlog_pos.le hlog_ge (by grind))
-    calc (p : ℝ) ≤ y + y / (log y) ^ (3 : ℝ) := hp
-      _ ≤ y + y / (log x) ^ (3 : ℝ) := add_le_add_right h y
-      _ = y * (1 + ε) := by simp only [hε_def, ← rpow_natCast]; grind
+      (hp : (p : ℝ) ≤ y + y / (5000 * (log y) ^ (2 : ℝ))) : (p : ℝ) ≤ y * (1 + ε) := by
+    have h : y / (5000 * (log y) ^ (2 : ℝ)) ≤ y / (5000 * (log x) ^ (2 : ℝ)) := by
+      have hden : 5000 * (log x) ^ (2 : ℝ) ≤ 5000 * (log y) ^ (2 : ℝ) := by
+        have : (log x) ^ (2 : ℝ) ≤ (log y) ^ (2 : ℝ) :=
+          rpow_le_rpow hlog_pos.le hlog_ge (by grind)
+        nlinarith
+      exact div_le_div_of_nonneg_left hy.le (by positivity) hden
+    calc (p : ℝ) ≤ y + y / (5000 * (log y) ^ (2 : ℝ)) := hp
+      _ ≤ y + y / (5000 * (log x) ^ (2 : ℝ)) := add_le_add_right h y
+      _ = y * (1 + ε) := by
+        simp only [hε_def, ← rpow_natCast]
+        field_simp
+        ring_nf
   have hε_pos : 0 < ε := by positivity
   have hx1_ge : x * (1 + ε) ≥ X₀ := (hsqrt_ge hn).trans (le_mul_of_one_le_right hx_pos.le
     (by grind))
@@ -1088,28 +1100,32 @@ theorem exists_p_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   (latexEnv := "lemma")]
 theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     ∃ q : Fin 3 → ℕ, (∀ i, Nat.Prime (q i)) ∧ StrictMono q ∧
-      (∀ i : Fin 3, n * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ (-((3 : ℝ) - (i : ℕ))) ≤ q i) ∧
+      (∀ i : Fin 3,
+        n * (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ (-((3 : ℝ) - (i : ℕ))) ≤ q i) ∧
       q 2 < n := by
   let x := √(n : ℝ)
   have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn)
   have hlog_pos : 0 < log x := by positivity [hlog hn]
-  set ε := 1 / (log x) ^ 3 with hε_def
+  set ε := 1 / (5000 * (log x) ^ 2) with hε_def
   have hε_pos : 0 < ε := by positivity
   have h1ε_pos : 0 < 1 + ε := by linarith
   have hn_pos : (0 : ℝ) < n := by positivity
   have hn_eq_x2 : (n : ℝ) = x ^ 2 := (sq_sqrt hn_pos.le).symm
-  -- Show that ε is small (ε ≤ 1/11.4³)
-  have hε_small : ε ≤ 1 / 11.4 ^ 3 := by
-    simp only [hε_def]
-    apply div_le_div_of_nonneg_left (by norm_num : (0 : ℝ) ≤ 1)
-    · apply pow_pos; linarith [log_X₀_gt]
-    · apply pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 11.4) (hlog hn)
+  -- Show that ε is small (in fact ε ≤ 1/5000, since log x ≥ 11.4 > 1)
+  have hε_small : ε ≤ 1 / (5000 : ℝ) := by
+    have hlog_ge : (1 : ℝ) ≤ log x := by linarith [hlog hn]
+    have hden : (5000 : ℝ) ≤ 5000 * (log x) ^ 2 := by
+      have : (1 : ℝ) ≤ (log x) ^ 2 := by nlinarith
+      nlinarith
+    have := (one_div_le_one_div_of_le (by positivity : (0 : ℝ) < 5000) hden)
+    -- `one_div_le_one_div_of_le` gives the desired inequality after rewriting
+    simpa [hε_def, mul_assoc, mul_left_comm, mul_comm] using this
   have h1ε3_pos : 0 < (1 + ε) ^ 3 := by positivity
   have h1ε2_pos : 0 < (1 + ε) ^ 2 := by positivity
   have h1ε3_le_2 : (1 + ε) ^ 3 ≤ 2 := by
-    have h1 : (1 + ε) ^ 3 ≤ (1 + 1 / 11.4 ^ 3) ^ 3 := by
-      apply pow_le_pow_left₀ (by linarith) (by linarith)
-    calc (1 + ε) ^ 3 ≤ (1 + 1 / 11.4 ^ 3) ^ 3 := h1
+    have h1 : (1 + ε) ^ 3 ≤ (1 + (1 / (5000 : ℝ))) ^ 3 := by
+      apply pow_le_pow_left₀ (by linarith) (by linarith [hε_small])
+    calc (1 + ε) ^ 3 ≤ (1 + (1 / (5000 : ℝ))) ^ 3 := h1
       _ ≤ 2 := by norm_num
   -- Define y_i = n / (1 + ε)^(3-i), and show y_i ≥ X₀
   have hy₀_ge : n / (1 + ε) ^ 3 ≥ X₀ := by
@@ -1144,14 +1160,20 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     (div_le_div_of_nonneg_left hn_pos.le h1ε_pos h1ε_le_1ε2)
   -- Upper bound helper: show q_i upper bound implies q_i ≤ next threshold
   have upper {y : ℝ} (hy_pos : 0 < y) (hy_ge : y ≥ x) {q : ℕ}
-      (hq : (q : ℝ) ≤ y + y / (log y) ^ (3 : ℝ)) : (q : ℝ) ≤ y * (1 + ε) := by
+      (hq : (q : ℝ) ≤ y + y / (5000 * (log y) ^ (2 : ℝ))) : (q : ℝ) ≤ y * (1 + ε) := by
     have hlog_ge : log y ≥ log x := log_le_log hx_pos hy_ge
-    have h : y / (log y) ^ (3 : ℝ) ≤ y / (log x) ^ (3 : ℝ) :=
-      div_le_div_of_nonneg_left hy_pos.le (rpow_pos_of_pos hlog_pos 3)
-        (rpow_le_rpow hlog_pos.le hlog_ge (by grind))
-    calc (q : ℝ) ≤ y + y / (log y) ^ (3 : ℝ) := hq
-      _ ≤ y + y / (log x) ^ (3 : ℝ) := add_le_add_right h y
-      _ = y * (1 + ε) := by simp only [hε_def, ← rpow_natCast]; field_simp; ring_nf
+    have hden : 5000 * (log x) ^ (2 : ℝ) ≤ 5000 * (log y) ^ (2 : ℝ) := by
+      have : (log x) ^ (2 : ℝ) ≤ (log y) ^ (2 : ℝ) :=
+        rpow_le_rpow hlog_pos.le hlog_ge (by grind)
+      nlinarith
+    have h : y / (5000 * (log y) ^ (2 : ℝ)) ≤ y / (5000 * (log x) ^ (2 : ℝ)) :=
+      div_le_div_of_nonneg_left hy_pos.le (by positivity) hden
+    calc (q : ℝ) ≤ y + y / (5000 * (log y) ^ (2 : ℝ)) := hq
+      _ ≤ y + y / (5000 * (log x) ^ (2 : ℝ)) := add_le_add_right h y
+      _ = y * (1 + ε) := by
+        simp only [hε_def, ← rpow_natCast]
+        field_simp
+        ring_nf
   -- Get upper bounds
   have hq₀_ub' : (q₀ : ℝ) ≤ n / (1 + ε) ^ 2 := by
     have := upper (by positivity) hy₀_ge_x hq₀_ub
@@ -1168,7 +1190,8 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   -- StrictMono: q₀ < q₁ < q₂
   have hq₀_lt_q₁ : q₀ < q₁ := Nat.cast_lt.mp (hq₀_ub'.trans_lt hq₁_lb)
   have hq₁_lt_q₂ : q₁ < q₂ := Nat.cast_lt.mp (hq₁_ub'.trans_lt hq₂_lb)
-  -- q₂ < n: the Dusart interval has upper bound y₂ * (1 + 1/(log y₂)³) < y₂ * (1 + ε) = n
+  -- q₂ < n: the Dusart interval has upper bound
+  --   y₂ * (1 + 1/(5000 (log y₂)^2)) < y₂ * (1 + ε) = n
   have hq₂_lt_n : q₂ < n := by
     have hy₂_pos : 0 < (n : ℝ) / (1 + ε) := by positivity
     have hy₂_lt_n : n / (1 + ε) < n := div_lt_self hn_pos (by linarith)
@@ -1181,16 +1204,19 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
         _ < n / (1 + ε) := h1
     have hlog_y₂_gt : log (n / (1 + ε)) > log x := log_lt_log hx_pos hx_lt_y₂
     have hq₂_strict : (q₂ : ℝ) < n := by
-      calc (q₂ : ℝ) ≤ n / (1 + ε) + (n / (1 + ε)) / (log (n / (1 + ε))) ^ 3 := hq₂_ub
-        _ = (n / (1 + ε)) * (1 + 1 / (log (n / (1 + ε))) ^ 3) := by
+      calc (q₂ : ℝ) ≤ n / (1 + ε) + (n / (1 + ε)) / (5000 * (log (n / (1 + ε))) ^ (2 : ℝ)) :=
+            hq₂_ub
+        _ = (n / (1 + ε)) * (1 + 1 / (5000 * (log (n / (1 + ε))) ^ (2 : ℝ))) := by
             have hpos : (0 : ℝ) < log (n / (1 + ε)) := hlog_y₂_pos
             field_simp [hpos.ne']
             rw [mul_comm]
             norm_cast
-        _ < (n / (1 + ε)) * (1 + 1 / (log x) ^ 3) := by
+        _ < (n / (1 + ε)) * (1 + 1 / (5000 * (log x) ^ (2 : ℝ))) := by
           apply mul_lt_mul_of_pos_left _ hy₂_pos
           gcongr
-        _ = (n / (1 + ε)) * (1 + ε) := by simp only [hε_def]
+        _ = (n / (1 + ε)) * (1 + ε) := by
+            simp only [hε_def, ← rpow_natCast]
+            ring_nf
         _ = n := by field_simp
     exact Nat.cast_lt.mp hq₂_strict
   refine ⟨![q₀, q₁, q₂], fun i ↦ by fin_cases i <;> assumption,
@@ -1199,14 +1225,14 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   fin_cases i <;> simp only [hε_def]
   · -- Case i = 0: n * (1 + ε)^(-3) ≤ q₀
     simp only [CharP.cast_eq_zero, sub_zero]
-    have heq : (n : ℝ) * (1 + 1 / (log x) ^ 3) ^ (-(3 : ℝ)) = n / (1 + ε) ^ 3 := by
+    have heq : (n : ℝ) * (1 + 1 / (5000 * (log x) ^ 2)) ^ (-(3 : ℝ)) = n / (1 + ε) ^ 3 := by
       rw [rpow_neg h1ε_pos.le, div_eq_mul_inv]
       norm_cast
     rw [heq]
     exact hq₀_lb.le
   · -- Case i = 1: show n * (1 + ε)^(-2) ≤ q₁
     simp only [Nat.cast_one]
-    have heq : (n : ℝ) * (1 + 1 / (log x) ^ 3) ^ (-(3 - 1 : ℝ)) = n / (1 + ε) ^ 2 := by
+    have heq : (n : ℝ) * (1 + 1 / (5000 * (log x) ^ 2)) ^ (-(3 - 1 : ℝ)) = n / (1 + ε) ^ 2 := by
       have h1 : -(3 - 1 : ℝ) = -2 := by ring
       rw [h1, rpow_neg h1ε_pos.le, div_eq_mul_inv]
       norm_cast
@@ -1214,7 +1240,7 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     exact hq₁_lb.le
   · -- Case i = 2: show n * (1 + ε)^(-1) ≤ q₂
     simp only [Nat.cast_ofNat]
-    have heq : (n : ℝ) * (1 + 1 / (log x) ^ 3) ^ (-(3 - 2 : ℝ)) = n / (1 + ε) := by
+    have heq : (n : ℝ) * (1 + 1 / (5000 * (log x) ^ 2)) ^ (-(3 - 2 : ℝ)) = n / (1 + ε) := by
       have h1 : -(3 - 2 : ℝ) = -1 := by ring
       rw [h1, rpow_neg h1ε_pos.le, rpow_one, div_eq_mul_inv]
     rw [heq]
@@ -1250,18 +1276,22 @@ blueprint_comment /--
   (latexEnv := "lemma")]
 theorem prod_q_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     ∏ i, (1 + (1 : ℝ) / (exists_q_primes hn).choose i) ≤
-      ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((i : ℕ) + 1 : ℝ) / n) := by
-  rw [show ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((i : ℕ) + 1 : ℝ) / n) =
-      ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) / n) by
+      ∏ i : Fin 3,
+        (1 + (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((i : ℕ) + 1 : ℝ) / n) := by
+  rw [show ∏ i : Fin 3,
+        (1 + (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((i : ℕ) + 1 : ℝ) / n) =
+      ∏ i : Fin 3,
+        (1 + (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((3 : ℝ) - (i : ℕ)) / n) by
     simp only [Fin.prod_univ_three, Fin.val_zero, Fin.val_one, Fin.val_two]; ring_nf]
   apply Finset.prod_le_prod (fun _ _ ↦ by positivity)
   intro i _
   suffices h : (1 : ℝ) / (exists_q_primes hn).choose i ≤
-      (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) / n from (by linarith)
+      (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((3 : ℝ) - (i : ℕ)) / n from (by linarith)
   have := (exists_q_primes hn).choose_spec.2.2.1 i
-  rw [show (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) / n =
-      1 / (n / (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) ) by field_simp]
-  have f0 : (0 : ℝ) < (log √(n : ℝ)) ^ 3 := by positivity [hlog hn]
+  rw [show (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((3 : ℝ) - (i : ℕ)) / n =
+      1 / (n / (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ ((3 : ℝ) - (i : ℕ)) ) by field_simp]
+  have f0 : (0 : ℝ) < (5000 * (log √(n : ℝ)) ^ 2) := by
+    positivity [hlog hn]
   apply one_div_le_one_div_of_le
   · positivity
   · convert this using 1
@@ -1306,7 +1336,9 @@ theorem prod_p_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     ∏ i, (1 + (1 : ℝ) /
         ((exists_p_primes hn).choose i * ((exists_p_primes hn).choose i + 1))) ≥
       ∏ i : Fin 3,
-        (1 + 1 / ((1 + 1 / (log √(n : ℝ)) ^ 3) ^ (2 * (i : ℕ) + 2 : ℝ) * (n + √n))) := by
+        (1 +
+          1 /
+            ((1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ (2 * (i : ℕ) + 2 : ℝ) * (n + √n))) := by
   refine Finset.prod_le_prod (fun i _ => by positivity [hlog hn]) fun i _ => ?_
   set p := (exists_p_primes hn).choose
   have h₀ (i) : √n < p i := by
@@ -1318,9 +1350,9 @@ theorem prod_p_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   gcongr 1 + 1 / ?_
   · have := ((exists_p_primes hn).choose_spec.1 i).pos
     positivity
-  have : p i ≤ √n * (1 + 1 / log √n ^ 3) ^ (i + 1 : ℝ) :=
+  have : p i ≤ √n * (1 + 1 / (5000 * log √n ^ 2)) ^ (i + 1 : ℝ) :=
     (exists_p_primes hn).choose_spec.2.2.1 i
-  have h₁ : p i ^ 2 ≤ n * (1 + 1 / log √n ^ 3) ^ (2 * i + 2 : ℝ) := by
+  have h₁ : p i ^ 2 ≤ n * (1 + 1 / (5000 * log √n ^ 2)) ^ (2 * i + 2 : ℝ) := by
     grw [this, mul_pow, sq_sqrt (by simp)]
     norm_cast
     rw [← pow_mul]
@@ -1366,23 +1398,28 @@ theorem prod_p_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
 theorem pq_ratio_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     1 - ((4 : ℝ) * ∏ i, ((exists_p_primes hn).choose i : ℝ))
     / ∏ i, ((exists_q_primes hn).choose i : ℝ) ≥
-    1 - 4 * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ 12 / n ^ (3 / 2 : ℝ) := by
-  have l1 : ((1 + 1 / Real.log √n ^ 3) ^ 12 / n ^ (3 / 2 : ℝ)) =
-    (n ^ (3 / 2 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ 6) /
-    (n ^ (3 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ (- 6 : ℝ)) := by
+    1 -
+        4 * (1 + 1 / (5000 * (log √(n : ℝ)) ^ 2)) ^ 12 /
+          n ^ (3 / 2 : ℝ) := by
+  have l1 :
+      ((1 + 1 / (5000 * Real.log √n ^ 2)) ^ 12 / n ^ (3 / 2 : ℝ)) =
+        (n ^ (3 / 2 : ℝ) * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ 6) /
+          (n ^ (3 : ℝ) * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ (- 6 : ℝ)) := by
     rw [rpow_neg (hε_pos hn).le, ← div_eq_mul_inv, div_div_eq_mul_div, mul_assoc,
       mul_comm, ← rpow_natCast, ← rpow_natCast (n := 6), ← rpow_add (hε_pos hn),
       ← div_div_eq_mul_div]
     · congr
       · grind
       · rw [← rpow_sub (by norm_cast; linarith)]; grind
-  have l2 : n ^ (3 / 2 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ 6 = ∏ i : Fin 3,
-    √n * (1 + 1 / Real.log √n ^ 3) ^ ((i : ℝ) + 1) := by
+  have l2 :
+      n ^ (3 / 2 : ℝ) * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ 6 =
+        ∏ i : Fin 3, √n * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ ((i : ℝ) + 1) := by
     rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn),
       ← rpow_add (hε_pos hn), rpow_div_two_eq_sqrt _ (by linarith)]
     norm_num
-  have l3 : n ^ (3 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ (- 6 : ℝ) =
-    ∏ i : Fin 3, n * (1 + 1 / Real.log √n ^ 3) ^ (-((3 : ℝ) - i.1))  := by
+  have l3 :
+      n ^ (3 : ℝ) * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ (- 6 : ℝ) =
+        ∏ i : Fin 3, n * (1 + 1 / (5000 * Real.log √n ^ 2)) ^ (-((3 : ℝ) - i.1)) := by
     rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn),
       ← rpow_add (hε_pos hn)]
     norm_num
@@ -1418,14 +1455,19 @@ blueprint_comment /--
   \(n=X_0^2\).  One can verify numerically or symbolically. -/)
   (latexEnv := "lemma")]
 theorem inv_cube_log_sqrt_le {n : ℕ} (hn : n ≥ X₀ ^ 2) :
-    1 / (log √(n : ℝ)) ^ 3 ≤ 0.000675 := by
-  calc
-    1 / Real.log √n ^ 3 ≤ 1 / Real.log X₀ ^ 3 := by
-      gcongr
-      exact Real.le_sqrt_of_sq_le (mod_cast hn)
-    _ ≤ _ := by
-      grw [← log_X₀_gt.le]
-      norm_num
+    1 / (5000 * (log √(n : ℝ)) ^ 2) ≤ 0.000675 := by
+  have hlog_ge : (1 : ℝ) ≤ log √(n : ℝ) := by
+    linarith [hlog hn]
+  have hsq : (1 : ℝ) ≤ (log √(n : ℝ)) ^ 2 := by
+    nlinarith
+  have hden : (5000 : ℝ) ≤ 5000 * (log √(n : ℝ)) ^ 2 := by
+    nlinarith [hsq]
+  have h₁ : 1 / (5000 * (log √(n : ℝ)) ^ 2) ≤ 1 / (5000 : ℝ) := by
+    have := one_div_le_one_div_of_le (by positivity : (0 : ℝ) < 5000) hden
+    simpa [mul_assoc, mul_left_comm, mul_comm] using this
+  have h₂ : (1 / (5000 : ℝ)) ≤ 0.000675 := by
+    norm_num
+  exact le_trans h₁ h₂
 
 @[blueprint
   "lem:eps-bounds"
@@ -1452,8 +1494,15 @@ theorem inv_n_pow_3_div_2_le {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     (mul_pos (by norm_num) hn_pos), show (3 / 2 : ℝ) = 1 + 1 / 2 by ring,
       rpow_add hn_pos, rpow_one, mul_comm, ← sqrt_eq_rpow]
   refine mul_le_mul_of_nonneg_left ?_ hn_pos.le
-  have := Real.sqrt_le_sqrt (cast_le.mpr hn)
-  simp_all
+  have hsqrt : (89693 : ℝ) ≤ √(n : ℝ) := by
+    have hX : (89693 : ℝ) ≤ X₀ := by
+      -- X₀ is the prime-gap threshold; it is much larger than 89693.
+      norm_num [X₀]
+    have h' : (X₀ : ℝ) ≤ √(n : ℝ) := hsqrt_ge hn
+    linarith
+  -- Invert the inequality to bound 1/√n.
+  have := one_div_le_one_div_of_le (by positivity : (0 : ℝ) < (89693 : ℝ)) hsqrt
+  simpa using this
 
 @[blueprint
   "lem:eps-bounds"
@@ -1477,8 +1526,12 @@ theorem inv_n_pow_3_div_2_le {n : ℕ} (hn : n ≥ X₀ ^ 2) :
 theorem inv_n_add_sqrt_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     1 / (n + √(n : ℝ)) ≥ (1 / (1 + 1 / (89693 : ℝ))) * (1 / (n : ℝ)) := by
   field_simp
-  have : 89693 ≤ √n := by grw [hn]; simp
-  linear_combination √n * this + sq_sqrt (cast_nonneg n)
+  have hsqrt : (89693 : ℝ) ≤ √(n : ℝ) := by
+    have hX : (89693 : ℝ) ≤ X₀ := by
+      norm_num [X₀]
+    have h' : (X₀ : ℝ) ≤ √(n : ℝ) := hsqrt_ge hn
+    linarith
+  linear_combination √n * hsqrt + sq_sqrt (cast_nonneg n)
 
 @[blueprint
   "lem:poly-ineq"
@@ -1600,7 +1653,7 @@ noncomputable def Criterion.mk' {n : ℕ} (hn : n ≥ X₀ ^ 2) : Criterion wher
   n := n
   p := (exists_p_primes hn).choose
   q := (exists_q_primes hn).choose
-  hn := le_trans (by decide : 1 ≤ 89693 ^ 2) hn
+  hn := le_trans (by decide : 1 ≤ X₀ ^ 2) hn
   hp := (exists_p_primes hn).choose_spec.1
   hp_mono := (exists_p_primes hn).choose_spec.2.1
   hq := (exists_q_primes hn).choose_spec.1
@@ -1608,37 +1661,79 @@ noncomputable def Criterion.mk' {n : ℕ} (hn : n ≥ X₀ ^ 2) : Criterion wher
   h_ord_1 := (exists_p_primes hn).choose_spec.2.2.2
   h_ord_2 := by
     have hn_pos : (0 : ℝ) < n := by positivity
-    have hp' : ((exists_p_primes hn).choose 2 : ℝ) ≤ √n * (1 + 1 / (log √n) ^ 3) ^ 3 := by
+    have hp' : ((exists_p_primes hn).choose 2 : ℝ) ≤
+        √n * (1 + 1 / (5000 * (log √n) ^ 2)) ^ 3 := by
       convert (exists_p_primes hn).choose_spec.2.2.1 2 using 2; norm_cast
-    have hq' : n * (1 + 1 / (log √n) ^ 3) ^ (-3 : ℝ) ≤ (exists_q_primes hn).choose 0 := by
+    have hq' : n * (1 + 1 / (5000 * (log √n) ^ 2)) ^ (-3 : ℝ) ≤ (exists_q_primes hn).choose 0 := by
       convert (exists_q_primes hn).choose_spec.2.2.1 0 using 2
       norm_num
     have hε_pos := hε_pos hn
     have hmid :
-        √n * (1 + 1 / (log √n) ^ 3) ^ 3 < n * (1 + 1 / (log √n) ^ 3) ^ (-3 : ℝ) := by
+        √n * (1 + 1 / (5000 * (log √n) ^ 2)) ^ 3 <
+          n * (1 + 1 / (5000 * (log √n) ^ 2)) ^ (-3 : ℝ) := by
       norm_cast
       norm_num [rpow_neg_one] at *
       rw [← div_eq_mul_inv, lt_div_iff₀ <| pow_pos hε_pos 3]
-      have : (1 + ((log √n) ^ 3)⁻¹) ^ 6 < 2 :=
-        calc (1 + ((log √n) ^ 3)⁻¹) ^ 6 < (1 + (11 ^ 3 : ℝ)⁻¹) ^ 6 := by gcongr; linarith [hlog hn]
-          _ ≤ 2 := by norm_num
+      have : (1 + (5000 * (log √n) ^ 2)⁻¹) ^ 6 < 2 := by
+        -- Using the crude bound (5000*(log √n)^2)⁻¹ ≤ (5000)⁻¹.
+        have h₁ : (5000 * (log √n) ^ 2)⁻¹ ≤ (5000 : ℝ)⁻¹ := by
+          have hsq : (1 : ℝ) ≤ (log √n) ^ 2 := by
+            have : (1 : ℝ) ≤ log √n := by linarith [hlog hn]
+            nlinarith
+          have hden : (5000 : ℝ) ≤ 5000 * (log √n) ^ 2 := by nlinarith [hsq]
+          -- invert the inequality, then rewrite inverses as `one_div`.
+          have := one_div_le_one_div_of_le (by positivity : (0 : ℝ) < 5000) hden
+          simpa [one_div, mul_comm, mul_left_comm, mul_assoc] using this
+        have h₂ : (1 + (5000 * (log √n) ^ 2)⁻¹) ^ 6 ≤ (1 + (5000 : ℝ)⁻¹) ^ 6 := by
+          gcongr
+        have h₃ : (1 + (5000 : ℝ)⁻¹) ^ 6 < 2 := by
+          norm_num
+        exact lt_of_le_of_lt h₂ h₃
       nlinarith [mul_self_sqrt (Nat.cast_nonneg n), hsqrt_ge hn]
     exact_mod_cast hp'.trans_lt <| hmid.trans_le hq'
   h_ord_3 := (exists_q_primes hn).choose_spec.2.2.2
   h_crit := by
-    have hn₀ : 0 ≤ Real.log √n := by
-      grw [hn]
-      simp [log_nonneg]
     have h₁ : 1 - (4 : ℝ) *
         (∏ i, (exists_p_primes hn).choose i : ℝ) / ∏ i, ((exists_q_primes hn).choose i : ℝ) ≥
         1 - 4 * (1 + 0.000675) ^ 12 * ((1 / 89693) * (1 / n)) := by
       grw [pq_ratio_ge hn, inv_cube_log_sqrt_le hn, ← inv_n_pow_3_div_2_le hn]
       simp [field]
     have : 0 ≤ 1 - 4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * (1 / n)) := by
-      grw [hn]
-      norm_num
+      -- A crude bound: since n ≥ 1, we have 0 ≤ 1/n ≤ 1.
+      have hn_pos : (0 : ℝ) < n := by positivity
+      have hn_ge1 : (1 : ℕ) ≤ n := le_trans (by decide : (1 : ℕ) ≤ X₀ ^ 2) hn
+      have h_inv_le_one : (1 : ℝ) / n ≤ 1 := by
+        -- 1/n ≤ 1  ↔  1 ≤ n
+        have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn_ge1
+        nlinarith
+      have h_inv_nonneg : (0 : ℝ) ≤ (1 : ℝ) / n := by positivity
+      -- Now bound the entire product by plugging in 1/n ≤ 1.
+      have : 4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * ((1 : ℝ) / n)) ≤
+          4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * 1) := by
+        gcongr
+      -- The right-hand side is a small explicit positive constant.
+      have hsmall : 4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * 1) < 1 := by
+        norm_num
+      have hle1 : 4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * ((1 : ℝ) / n)) ≤ 1 :=
+        le_trans this (le_of_lt hsmall)
+      nlinarith
     have := this.trans h₁
-    have hn' : (0 : ℝ) ≤ 1 / ↑n ∧ (1 : ℝ) / ↑n ≤ 1 / 89693 ^ 2 := ⟨by simp, by grw [hn]; simp⟩
+    have hn' : (0 : ℝ) ≤ 1 / ↑n ∧ (1 : ℝ) / ↑n ≤ 1 / 89693 ^ 2 := by
+      refine ⟨by simp, ?_⟩
+      -- Since n ≥ X₀^2 and X₀ is huge, we certainly have n ≥ 89693^2.
+      have hn_ge : (89693 : ℕ) ^ 2 ≤ n :=
+        le_trans (by decide : (89693 : ℕ) ^ 2 ≤ X₀ ^ 2) hn
+      have hn_ge' : (89693 : ℝ) ^ (2 : ℕ) ≤ (n : ℝ) := by exact_mod_cast hn_ge
+      -- Convert to the desired bound on 1/n.
+      have : (1 : ℝ) / (n : ℝ) ≤ 1 / ((89693 : ℝ) ^ (2 : ℕ)) := by
+        -- invert the inequality (both sides positive)
+        have hpos : (0 : ℝ) < ((89693 : ℝ) ^ (2 : ℕ)) := by
+          have : (0 : ℝ) < (89693 : ℝ) := by norm_num
+          simpa using pow_pos this 2
+        -- one_div is monotone decreasing on positive numbers
+        simpa [one_div] using (one_div_le_one_div_of_le hpos hn_ge')
+      -- rewrite ((89693:ℝ)^2) as 89693^2 to match the goal
+      simpa [div_eq_mul_inv] using this
     grw [Lcm.prod_q_ge hn, Lcm.prod_p_ge hn, h₁]
     simp_rw [div_eq_mul_one_div (_ ^ (_ : ℝ) : ℝ) (n : ℝ),
       show 3 / (8 * n : ℝ) = 3 / 8 * (1 / n) by field_simp, ← one_div_mul_one_div]
@@ -1668,7 +1763,7 @@ blueprint_comment /--
   \(p_1,p_2,p_3,q_1,q_2,q_3\) satisfying the hypotheses of Theorem~\ref{thm:criterion}.
   Hence \(L_n\) is not highly abundant. -/)
   (proofUses := ["prop:ineq-holds-large-n", "thm:criterion"])]
-theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ 89693 ^ 2) : ¬HighlyAbundant (L n) :=
+theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ X₀ ^ 2) : ¬HighlyAbundant (L n) :=
   (Criterion.mk' hn).not_highlyAbundant
 
 end Lcm

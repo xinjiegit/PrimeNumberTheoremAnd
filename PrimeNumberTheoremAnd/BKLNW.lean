@@ -504,7 +504,7 @@ f(x) := \sum_{k=3}^{\lfloor \frac{\log x}{\log 2} \rfloor} x^{\frac{1}{k} - \fra
   (discussion := 639)]
 theorem prop_3 (I : Inputs) {x₀ x : ℝ} (hx₀ : x₀ ≥ 2 ^ 9) (hx : x ≥ x₀) :
     ∑ k ∈ Icc 3 ⌊(log x)/(log 2)⌋, θ (x^(1/k)) ≤
-      (1 + I.α) * max (f x₀) (f (2^(⌊(log x₀)/(log 2)⌋ + 1))) * x^(1/3:ℝ) := by
+  (1 + I.α) * max (f x₀) (f (2^(⌊(log x₀)/(log 2)⌋₊ + 1))) * x^(1/3:ℝ) := by
   have h_sum_le : ∑ k ∈ Icc 3 ⌊(log x) / (log 2)⌋, θ (x^(1 / k : ℝ)) ≤
       (1 + I.α) * f x * x^(1 / 3 : ℝ) := by
     have h_sum_le' : ∑ k ∈ Icc 3 ⌊(log x) / (log 2)⌋, θ (x^(1 / k : ℝ)) ≤
