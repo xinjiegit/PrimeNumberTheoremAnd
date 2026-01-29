@@ -1,7 +1,7 @@
 import Architect
 import PrimeNumberTheoremAnd.SecondarySummary
 
-namespace Lcm
+namespace Lcm_T1_C1
 
 open ArithmeticFunction hiding log
 open Finset Nat Real
@@ -14,19 +14,15 @@ blueprint_comment /--
 \subsection{Problem statement and notation}
 -/
 
-theorem Dusart_thm :
-  ∀ x : ℝ,
-    x ≥ 89693 →
-      ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧ (p : ℝ) ≤ x + x / (Real.log x) ^ (3 : ℝ) := by
-  sorry
 
-/-
+
+
 theorem Dusart_thm :
   ∀ x : ℝ,
     x ≥ 2 →
       ∃ p : ℕ, Nat.Prime p ∧ x - (8 / 5 : ℝ) * √x * log x ≤ (p : ℝ) ∧ (p : ℝ) ≤ x := by
   sorry
--/
+
 
 
 @[blueprint
@@ -996,8 +992,13 @@ used on the \(p\)-side than the \(q\)-side to restore an asymptotic advantage.
 
 abbrev X₀ := 89693
 
+abbrev X₁ : ℕ := 140000 ^ 6
+
 lemma hsqrt_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) : √(n : ℝ) ≥ 89693 := by
   simpa using sqrt_le_sqrt (by exact_mod_cast hn : (n : ℝ) ≥ 89693 ^ 2)
+
+lemma hsqrt_ge_X₁ {n : ℕ} (hn : n ≥ X₁ ^ 2) : √(n : ℝ) ≥ X₁ := by
+  simpa using sqrt_le_sqrt (by exact_mod_cast hn : (n : ℝ) ≥ (X₁ : ℝ) ^ 2)
 
 lemma log_X₀_gt : Real.log X₀ > 11.4 := by
   rw [gt_iff_lt, show (11.4 : ℝ) = 57 / (5 : ℕ) by norm_num, div_lt_iff₀ (by norm_num),
@@ -1014,6 +1015,188 @@ lemma hε_pos {n : ℕ} (hn : n ≥ X₀ ^ 2) : 0 < 1 + 1 / (log √(n : ℝ)) ^
   positivity [hlog hn]
 
 lemma log_X₀_pos : 0 < Real.log X₀ := by linear_combination log_X₀_gt
+
+lemma X₀_ge_two : (2 : ℝ) ≤ X₀ := by
+  norm_num [X₀]
+
+lemma log_ge_one_of_ge_X₁ {x : ℝ} (hx : x ≥ X₁) : 1 ≤ log x := by
+  have hx_pos : 0 < x := (by norm_num [X₁] : (0 : ℝ) < X₁).trans_le hx
+  have hx_ge_three : (3 : ℝ) ≤ x := (by norm_num [X₁] : (3 : ℝ) ≤ X₁).trans hx
+  have hexp1_le : Real.exp 1 ≤ x := by
+    have hexp1_le_three : Real.exp 1 ≤ (3 : ℝ) :=
+      (Real.exp_one_lt_d9.le.trans (by norm_num))
+    exact hexp1_le_three.trans hx_ge_three
+  exact (le_log_iff_exp_le hx_pos).2 hexp1_le
+
+lemma log_pow_four_le_sqrt {x : ℝ} (hx : x ≥ X₁) :
+    (32 / 5 : ℝ) * (log x) ^ 4 < √x := by
+  have hx_nonneg : 0 ≤ x := by linarith [hx]
+  have hlog_le : log x ≤ x ^ (1 / 12 : ℝ) / (1 / 12 : ℝ) :=
+    log_le_rpow_div hx_nonneg (by norm_num)
+  have hlog_le' : log x ≤ 12 * x ^ (1 / 12 : ℝ) := by
+    simpa [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using hlog_le
+  have hlog_le'' : log x ≤ 12 * x ^ ((12 : ℝ)⁻¹) := by
+    simpa [one_div] using hlog_le'
+  have hlog_nonneg : 0 ≤ log x := by
+    have : 1 ≤ log x := log_ge_one_of_ge_X₁ hx
+    linarith
+  have hlog4 : (log x) ^ 4 ≤ (12 * x ^ ((12 : ℝ)⁻¹)) ^ 4 :=
+    pow_le_pow_left₀ hlog_nonneg hlog_le'' 4
+  have hpow : (x ^ ((12 : ℝ)⁻¹)) ^ 4 = x ^ ((3 : ℝ)⁻¹) := by
+    have h :
+        x ^ (((12 : ℝ)⁻¹) * 4) = (x ^ ((12 : ℝ)⁻¹)) ^ 4 :=
+      Real.rpow_mul_natCast hx_nonneg ((12 : ℝ)⁻¹) 4
+    calc
+      (x ^ ((12 : ℝ)⁻¹)) ^ 4 = x ^ (((12 : ℝ)⁻¹) * 4) := by simpa using h.symm
+      _ = x ^ ((3 : ℝ)⁻¹) := by ring_nf
+  have hlog4' : (12 * x ^ ((12 : ℝ)⁻¹)) ^ 4 = 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) := by
+    calc
+      (12 * x ^ ((12 : ℝ)⁻¹)) ^ 4 = 12 ^ 4 * (x ^ ((12 : ℝ)⁻¹)) ^ 4 := by
+        simp [mul_pow, mul_comm, mul_left_comm, mul_assoc]
+      _ = 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) := by
+        simp [hpow]
+  have hlog4'' : (log x) ^ 4 ≤ 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) := by
+    have hlog4_eq : (12 * x ^ ((12 : ℝ)⁻¹)) ^ 4 = 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) := by
+      simpa using hlog4'
+    simpa [hlog4_eq] using hlog4
+  have hlog4''' :
+      (32 / 5 : ℝ) * (log x) ^ 4 ≤ (32 / 5 : ℝ) * 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) := by
+    have hlog4'''0 :
+        (32 / 5 : ℝ) * (log x) ^ 4 ≤ (32 / 5 : ℝ) * (12 ^ 4 * x ^ ((3 : ℝ)⁻¹)) :=
+      mul_le_mul_of_nonneg_left hlog4'' (by positivity : (0 : ℝ) ≤ (32 / 5 : ℝ))
+    simpa [mul_assoc] using hlog4'''0
+  have hX₁_sixth : (X₁ : ℝ) ^ ((6 : ℝ)⁻¹) = (140000 : ℝ) := by
+    have hx0 : 0 ≤ (140000 : ℝ) := by norm_num
+    have hcast : (X₁ : ℝ) = (140000 : ℝ) ^ 6 := by
+      dsimp [X₁]
+      exact (Nat.cast_pow (α := ℝ) 140000 6)
+    calc
+      (X₁ : ℝ) ^ ((6 : ℝ)⁻¹) = ((140000 : ℝ) ^ 6) ^ ((6 : ℝ)⁻¹) := by simpa [hcast]
+      _ = (140000 : ℝ) := by
+        simpa using (pow_rpow_inv_natCast (x := (140000 : ℝ)) (n := 6) hx0 (by decide))
+  have hconst : (32 / 5 : ℝ) * 12 ^ 4 < (X₁ : ℝ) ^ ((6 : ℝ)⁻¹) := by
+    have hconst' : (32 / 5 : ℝ) * 12 ^ 4 < (140000 : ℝ) := by norm_num
+    exact lt_of_lt_of_eq hconst' hX₁_sixth.symm
+  have hx_rpow : (X₁ : ℝ) ^ ((6 : ℝ)⁻¹) ≤ x ^ ((6 : ℝ)⁻¹) := by
+    have hx_le : (X₁ : ℝ) ≤ x := by exact_mod_cast hx
+    exact rpow_le_rpow (by positivity : 0 ≤ (X₁ : ℝ)) hx_le (by norm_num)
+  have hconst_x : (32 / 5 : ℝ) * 12 ^ 4 < x ^ ((6 : ℝ)⁻¹) := lt_of_lt_of_le hconst hx_rpow
+  have hx_third_pos : 0 < x ^ ((3 : ℝ)⁻¹) := by positivity
+  have hmul :
+      (32 / 5 : ℝ) * 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) < x ^ ((6 : ℝ)⁻¹) * x ^ ((3 : ℝ)⁻¹) :=
+    mul_lt_mul_of_pos_right hconst_x hx_third_pos
+  have hx_pos : 0 < x := (by norm_num [X₁] : (0 : ℝ) < X₁).trans_le hx
+  have hmul' : x ^ ((6 : ℝ)⁻¹) * x ^ ((3 : ℝ)⁻¹) = x ^ (1 / 2 : ℝ) := by
+    have h' :
+        x ^ ((6 : ℝ)⁻¹) * x ^ ((3 : ℝ)⁻¹) = x ^ (((6 : ℝ)⁻¹) + ((3 : ℝ)⁻¹)) := by
+      simpa using (Real.rpow_add hx_pos ((6 : ℝ)⁻¹) ((3 : ℝ)⁻¹)).symm
+    calc
+      x ^ ((6 : ℝ)⁻¹) * x ^ ((3 : ℝ)⁻¹) = x ^ (((6 : ℝ)⁻¹) + ((3 : ℝ)⁻¹)) := h'
+      _ = x ^ (1 / 2 : ℝ) := by ring_nf
+  have hx_sqrt : x ^ (1 / 2 : ℝ) = √x := by
+    simpa using (rpow_div_two_eq_sqrt (x := x) (r := (1 : ℝ)) (by linarith : 0 ≤ x))
+  have hmul'' : (32 / 5 : ℝ) * 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) < √x := by
+    have hmul1 : (32 / 5 : ℝ) * 12 ^ 4 * x ^ ((3 : ℝ)⁻¹) < x ^ (1 / 2 : ℝ) :=
+      lt_of_lt_of_eq hmul hmul'
+    exact lt_of_lt_of_eq hmul1 hx_sqrt
+  exact lt_of_le_of_lt hlog4''' hmul''
+
+lemma Dusart_interval {x : ℝ} (hx : x ≥ X₁) :
+    ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧ (p : ℝ) ≤ x + x / (log x) ^ 3 := by
+  have hx_pos : 0 < x := (by norm_num [X₁] : (0 : ℝ) < X₁).trans_le hx
+  have hlog_ge_one : 1 ≤ log x := log_ge_one_of_ge_X₁ hx
+  have hlog_pos : 0 < log x := by linarith [hlog_ge_one]
+  set x' : ℝ := x + x / (log x) ^ 3
+  have hx_div_pos : 0 < x / (log x) ^ 3 := by positivity [hx_pos, hlog_pos]
+  have hx_le_x' : x ≤ x' := by
+    simp [x', le_add_iff_nonneg_right, hx_div_pos.le]
+  have hx_ge_two : (2 : ℝ) ≤ x := (by norm_num [X₁] : (2 : ℝ) ≤ X₁).trans hx
+  have hx'_ge_two : x' ≥ 2 := by linarith [hx_ge_two, hx_le_x']
+  obtain ⟨p, hp_prime, hp_lb, hp_ub⟩ := Dusart_thm x' hx'_ge_two
+  have hlog_pow_ge : 1 ≤ (log x) ^ 3 := by
+    have h := pow_le_pow_left₀ (by norm_num : (0 : ℝ) ≤ 1) hlog_ge_one 3
+    simpa using h
+  have hx_div_le : x / (log x) ^ 3 ≤ x := div_le_self (by positivity [hx_pos]) hlog_pow_ge
+  have hx'_le : x' ≤ 2 * x := by
+    simp [x']
+    linarith [hx_div_le]
+  have hx'_pos : 0 < x' := by linarith [hx_pos, hx_div_pos]
+  have hlogx' : log x' ≤ 2 * log x := by
+    have hlog2_le : Real.log 2 ≤ log x :=
+      log_le_log (by norm_num : (0 : ℝ) < 2) hx_ge_two
+    have hlogx'_le : log x' ≤ log (2 * x) := log_le_log hx'_pos (by linarith [hx'_le])
+    have hlog2x : log (2 * x) = Real.log 2 + log x := by
+      have h2_ne : (2 : ℝ) ≠ 0 := by norm_num
+      have hx_ne : x ≠ 0 := by exact ne_of_gt hx_pos
+      simpa [mul_comm, add_comm, add_left_comm, add_assoc] using (log_mul h2_ne hx_ne)
+    have hlog2_le' : Real.log 2 + log x ≤ log x + log x := by
+      have h := add_le_add_right hlog2_le (log x)
+      simpa [add_comm, add_left_comm, add_assoc] using h
+    calc
+      log x' ≤ log (2 * x) := hlogx'_le
+      _ = Real.log 2 + log x := hlog2x
+      _ ≤ log x + log x := hlog2_le'
+      _ = 2 * log x := by ring
+  have hsqrtx' : √x' ≤ 2 * √x := by
+    have hx'_le4x : x' ≤ 4 * x := by linarith [hx'_le]
+    have hsqrt_le : √x' ≤ √(4 * x) := by
+      exact sqrt_le_sqrt (by linarith [hx'_le4x])
+    have hsqrt4x : √(4 * x) = 2 * √x := by
+      calc
+        √(4 * x) = √4 * √x := by
+          exact (sqrt_mul (x := (4 : ℝ)) (y := x) (by norm_num))
+        _ = 2 * √x := by
+          have h4 : (√4 : ℝ) = 2 := by
+            have h2 : (0 : ℝ) ≤ (2 : ℝ) := by norm_num
+            calc
+              (√4 : ℝ) = √((2 : ℝ) ^ 2) := by norm_num
+              _ = (2 : ℝ) := by simpa using (sqrt_sq h2)
+          simpa [h4]
+    simpa [hsqrt4x] using hsqrt_le
+  have hmain1 : (8 / 5 : ℝ) * √x' * log x' ≤ (32 / 5 : ℝ) * √x * log x := by
+    have hlogx'_nonneg : 0 ≤ log x' := by
+      have hx_ge_one : (1 : ℝ) ≤ x := (by norm_num [X₁] : (1 : ℝ) ≤ X₁).trans hx
+      have hx'_ge_one : (1 : ℝ) ≤ x' := hx_ge_one.trans hx_le_x'
+      exact log_nonneg hx'_ge_one
+    have hstep1 :
+        (8 / 5 : ℝ) * √x' * log x' ≤ (8 / 5 : ℝ) * (2 * √x) * log x' := by
+      have h1 : (8 / 5 : ℝ) * √x' ≤ (8 / 5 : ℝ) * (2 * √x) :=
+        mul_le_mul_of_nonneg_left hsqrtx' (by norm_num)
+      exact mul_le_mul_of_nonneg_right h1 hlogx'_nonneg
+    have hstep2 :
+        (8 / 5 : ℝ) * (2 * √x) * log x' ≤ (8 / 5 : ℝ) * (2 * √x) * (2 * log x) := by
+      have hconst_nonneg : 0 ≤ (8 / 5 : ℝ) * (2 * √x) := by positivity
+      exact mul_le_mul_of_nonneg_left hlogx' hconst_nonneg
+    have hstep3 :
+        (8 / 5 : ℝ) * (2 * √x) * (2 * log x) = (32 / 5 : ℝ) * √x * log x := by ring
+    exact hstep3 ▸ (hstep1.trans hstep2)
+  have hmain2 : (32 / 5 : ℝ) * √x * log x < x / (log x) ^ 3 := by
+    have hlog_pow_pos : 0 < (log x) ^ 3 := by positivity [hlog_pos]
+    have hlog4 := log_pow_four_le_sqrt (x := x) hx
+    have hdiv :
+        (32 / 5 : ℝ) * log x < √x / (log x) ^ 3 := by
+      have hdiv' :=
+        div_lt_div_of_pos_right hlog4 hlog_pow_pos
+      have hlog_ne : (log x) ≠ 0 := by linarith [hlog_pos]
+      have hdiv'' :
+          (32 / 5 : ℝ) * (log x) ^ 4 / (log x) ^ 3 = (32 / 5 : ℝ) * log x := by
+        field_simp [pow_succ, hlog_ne, mul_comm, mul_left_comm, mul_assoc]
+      simpa [hdiv''] using hdiv'
+    have hmul := mul_lt_mul_of_pos_left hdiv (by positivity : 0 < √x)
+    have hsqrt_mul : √x * √x = x := by
+      simpa [pow_two] using (sq_sqrt (by linarith : 0 ≤ x))
+    have hmul' : (32 / 5 : ℝ) * √x * log x < √x * (√x / (log x) ^ 3) := by
+      simpa [mul_comm, mul_left_comm, mul_assoc] using hmul
+    have hright : √x * (√x / (log x) ^ 3) = x / (log x) ^ 3 := by
+      simp [div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc, hsqrt_mul]
+    exact hmul'.trans_eq hright
+  have hx_lb : x < x' - (8 / 5 : ℝ) * √x' * log x' := by
+    have hmain : (8 / 5 : ℝ) * √x' * log x' < x / (log x) ^ 3 :=
+      lt_of_le_of_lt hmain1 hmain2
+    linarith [hmain]
+  have hp_lb' : x < (p : ℝ) := lt_of_lt_of_le hx_lb hp_lb
+  refine ⟨p, hp_prime, hp_lb', ?_⟩
+  simpa [x'] using hp_ub
 
 blueprint_comment /--
 \subsection{Choice of six primes \(p_i,q_i\) for large \(n\)}
@@ -1040,13 +1223,14 @@ inequality.  Here we will rely on the prime number theorem of Dusart \cite{Dusar
   For \(n\) large and \(x = \sqrt{n}\), we have \(\sqrt{n} < p_1\) as soon as the first interval
   lies strictly above \(\sqrt{n}\); this can be enforced by taking \(n\) large enough. -/)
   (latexEnv := "lemma")]
-theorem exists_p_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
+theorem exists_p_primes {n : ℕ} (hn : n ≥ X₁ ^ 2) :
     ∃ p : Fin 3 → ℕ, (∀ i, Nat.Prime (p i)) ∧ StrictMono p ∧
       (∀ i, p i ≤ √(n : ℝ) * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ (i + 1 : ℝ)) ∧
       √(n : ℝ) < p 0 := by
+  have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
   let x := √(n : ℝ)
-  have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn)
-  have hlog_pos : 0 < log x := by positivity [hlog hn]
+  have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn0)
+  have hlog_pos : 0 < log x := by positivity [hlog hn0]
   set ε := 1 / (log x) ^ 3 with hε_def
   have upper {y : ℝ} (hy : 0 < y) (hlog_ge : log y ≥ log x) {p : ℕ}
       (hp : (p : ℝ) ≤ y + y / (log y) ^ (3 : ℝ)) : (p : ℝ) ≤ y * (1 + ε) := by
@@ -1057,18 +1241,30 @@ theorem exists_p_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
       _ ≤ y + y / (log x) ^ (3 : ℝ) := add_le_add_right h y
       _ = y * (1 + ε) := by simp only [hε_def, ← rpow_natCast]; grind
   have hε_pos : 0 < ε := by positivity
-  have hx1_ge : x * (1 + ε) ≥ X₀ := (hsqrt_ge hn).trans (le_mul_of_one_le_right hx_pos.le
+  have hx_ge_X₁ : x ≥ X₁ := by
+    simpa [x] using (hsqrt_ge_X₁ hn)
+  have hx1_ge : x * (1 + ε) ≥ X₁ := hx_ge_X₁.trans (le_mul_of_one_le_right hx_pos.le
     (by grind))
-  have hx2_ge : x * (1 + ε) ^ 2 ≥ X₀ := (hsqrt_ge hn).trans (le_mul_of_one_le_right hx_pos.le
+  have hx2_ge : x * (1 + ε) ^ 2 ≥ X₁ := hx_ge_X₁.trans (le_mul_of_one_le_right hx_pos.le
     (by nlinarith [sq_nonneg ε]))
-  obtain ⟨p₀, hp₀_prime, hp₀_lb, hp₀_ub⟩ := Dusart_thm x (hsqrt_ge hn)
-  obtain ⟨p₁, hp₁_prime, hp₁_lb, hp₁_ub⟩ := Dusart_thm _ hx1_ge
-  obtain ⟨p₂, hp₂_prime, hp₂_lb, hp₂_ub⟩ := Dusart_thm _ hx2_ge
-  have hp₀_ub' : (p₀ : ℝ) ≤ x * (1 + ε) := upper hx_pos le_rfl hp₀_ub
+  obtain ⟨p₀, hp₀_prime, hp₀_lb, hp₀_ub⟩ := Dusart_interval (x := x) hx_ge_X₁
+  obtain ⟨p₁, hp₁_prime, hp₁_lb, hp₁_ub⟩ := Dusart_interval (x := x * (1 + ε)) hx1_ge
+  obtain ⟨p₂, hp₂_prime, hp₂_lb, hp₂_ub⟩ := Dusart_interval (x := x * (1 + ε) ^ 2) hx2_ge
+  have hp₀_ub'0 : (p₀ : ℝ) ≤ x + x / (log x) ^ (3 : ℝ) := by
+    simpa [Real.rpow_natCast] using hp₀_ub
+  have hp₀_ub' : (p₀ : ℝ) ≤ x * (1 + ε) := upper hx_pos le_rfl hp₀_ub'0
   have hp₁_ub' : (p₁ : ℝ) ≤ x * (1 + ε) ^ 2 := by
-    linarith [sq (1 + ε), upper (by grind) (log_le_log hx_pos (by grind)) hp₁_ub]
+    have hp₁_ub'0 :
+        (p₁ : ℝ) ≤ x * (1 + ε) +
+          x * (1 + ε) / (Real.log (x * (1 + ε))) ^ (3 : ℝ) := by
+      simpa [Real.rpow_natCast] using hp₁_ub
+    linarith [sq (1 + ε), upper (by grind) (log_le_log hx_pos (by grind)) hp₁_ub'0]
   have hp₂_ub' : (p₂ : ℝ) ≤ x * (1 + ε) ^ 3 := by
-    linarith [pow_succ (1 + ε) 2, upper (by grind) (log_le_log hx_pos (by grind)) hp₂_ub]
+    have hp₂_ub'0 :
+        (p₂ : ℝ) ≤ x * (1 + ε) ^ 2 +
+          x * (1 + ε) ^ 2 / (Real.log (x * (1 + ε) ^ 2)) ^ (3 : ℝ) := by
+      simpa [Real.rpow_natCast] using hp₂_ub
+    linarith [pow_succ (1 + ε) 2, upper (by grind) (log_le_log hx_pos (by grind)) hp₂_ub'0]
   refine ⟨![p₀, p₁, p₂], fun i ↦ by fin_cases i <;> assumption,
     Fin.strictMono_iff_lt_succ.mpr fun i ↦ by
       fin_cases i
@@ -1096,13 +1292,14 @@ theorem exists_p_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   ordering. -/)
   (proofUses := ["thm:Dusart"])
   (latexEnv := "lemma")]
-theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
+theorem exists_q_primes {n : ℕ} (hn : n ≥ X₁ ^ 2) :
     ∃ q : Fin 3 → ℕ, (∀ i, Nat.Prime (q i)) ∧ StrictMono q ∧
       (∀ i : Fin 3, n * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ (-((3 : ℝ) - (i : ℕ))) ≤ q i) ∧
       q 2 < n := by
+  have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
   let x := √(n : ℝ)
-  have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn)
-  have hlog_pos : 0 < log x := by positivity [hlog hn]
+  have hx_pos : 0 < x := (by grind : (0 : ℝ) < X₀).trans_le (hsqrt_ge hn0)
+  have hlog_pos : 0 < log x := by positivity [hlog hn0]
   set ε := 1 / (log x) ^ 3 with hε_def
   have hε_pos : 0 < ε := by positivity
   have h1ε_pos : 0 < 1 + ε := by linarith
@@ -1113,7 +1310,7 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
     simp only [hε_def]
     apply div_le_div_of_nonneg_left (by norm_num : (0 : ℝ) ≤ 1)
     · apply pow_pos; linarith [log_X₀_gt]
-    · apply pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 11.4) (hlog hn)
+    · apply pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 11.4) (hlog hn0)
   have h1ε3_pos : 0 < (1 + ε) ^ 3 := by positivity
   have h1ε2_pos : 0 < (1 + ε) ^ 2 := by positivity
   have h1ε3_le_2 : (1 + ε) ^ 3 ≤ 2 := by
@@ -1121,29 +1318,29 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
       apply pow_le_pow_left₀ (by linarith) (by linarith)
     calc (1 + ε) ^ 3 ≤ (1 + 1 / 11.4 ^ 3) ^ 3 := h1
       _ ≤ 2 := by norm_num
-  -- Define y_i = n / (1 + ε)^(3-i), and show y_i ≥ X₀
-  have hy₀_ge : n / (1 + ε) ^ 3 ≥ X₀ := by
+  -- Define y_i = n / (1 + ε)^(3-i), and show y_i ≥ X₁
+  have hy₀_ge : n / (1 + ε) ^ 3 ≥ X₁ := by
     calc n / (1 + ε) ^ 3 = x ^ 2 / (1 + ε) ^ 3 := by rw [hn_eq_x2]
       _ ≥ x ^ 2 / 2 := div_le_div_of_nonneg_left (sq_nonneg x) (by grind) h1ε3_le_2
-      _ ≥ X₀ ^ 2 / 2 := by
-        apply div_le_div_of_nonneg_right (sq_le_sq' (by linarith) (hsqrt_ge hn))
+      _ ≥ X₁ ^ 2 / 2 := by
+        apply div_le_div_of_nonneg_right (sq_le_sq' (by linarith) (hsqrt_ge_X₁ hn))
         norm_num
-      _ ≥ X₀ := by norm_num
+      _ ≥ X₁ := by norm_num
   have h1ε2_le_1ε3 : (1 + ε) ^ 2 ≤ (1 + ε) ^ 3 := by nlinarith [sq_nonneg ε]
   have h1ε_le_1ε2 : 1 + ε ≤ (1 + ε) ^ 2 := by nlinarith [sq_nonneg ε]
-  have hy₁_ge : n / (1 + ε) ^ 2 ≥ X₀ := le_trans hy₀_ge
+  have hy₁_ge : n / (1 + ε) ^ 2 ≥ X₁ := le_trans hy₀_ge
     (div_le_div_of_nonneg_left hn_pos.le h1ε2_pos h1ε2_le_1ε3)
-  have hy₂_ge : n / (1 + ε) ≥ X₀ := le_trans hy₁_ge
+  have hy₂_ge : n / (1 + ε) ≥ X₁ := le_trans hy₁_ge
     (div_le_div_of_nonneg_left hn_pos.le h1ε_pos h1ε_le_1ε2)
   -- Apply Dusart to get primes
   obtain ⟨q₀, hq₀_prime, hq₀_lb, hq₀_ub⟩ :=
-    Dusart_thm (n / (1 + ε) ^ 3) hy₀_ge
+    Dusart_interval (x := n / (1 + ε) ^ 3) hy₀_ge
   obtain ⟨q₁, hq₁_prime, hq₁_lb, hq₁_ub⟩ :=
-    Dusart_thm (n / (1 + ε) ^ 2) hy₁_ge
+    Dusart_interval (x := n / (1 + ε) ^ 2) hy₁_ge
   obtain ⟨q₂, hq₂_prime, hq₂_lb, hq₂_ub⟩ :=
-    Dusart_thm (n / (1 + ε)) hy₂_ge
+    Dusart_interval (x := n / (1 + ε)) hy₂_ge
   -- Show y_i ≥ x (needed for upper bound helper)
-  have hx_ge_2 : x ≥ 2 := by linarith [hsqrt_ge hn, (by grind : (2 : ℝ) ≤ X₀)]
+  have hx_ge_2 : x ≥ 2 := by linarith [hsqrt_ge hn0, (by grind : (2 : ℝ) ≤ X₀)]
   have hy₀_ge_x : n / (1 + ε) ^ 3 ≥ x := by
     calc n / (1 + ε) ^ 3 = x ^ 2 / (1 + ε) ^ 3 := by rw [hn_eq_x2]
       _ ≥ x ^ 2 / 2 := div_le_div_of_nonneg_left (sq_nonneg x) (by grind) h1ε3_le_2
@@ -1164,15 +1361,27 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
       _ = y * (1 + ε) := by simp only [hε_def, ← rpow_natCast]; field_simp; ring_nf
   -- Get upper bounds
   have hq₀_ub' : (q₀ : ℝ) ≤ n / (1 + ε) ^ 2 := by
-    have := upper (by positivity) hy₀_ge_x hq₀_ub
+    have hq₀_ub'0 :
+        (q₀ : ℝ) ≤ n / (1 + ε) ^ 3 +
+          n / (1 + ε) ^ 3 / (Real.log (n / (1 + ε) ^ 3)) ^ (3 : ℝ) := by
+      simpa [Real.rpow_natCast] using hq₀_ub
+    have := upper (by positivity) hy₀_ge_x hq₀_ub'0
     calc (q₀ : ℝ) ≤ (n / (1 + ε) ^ 3) * (1 + ε) := this
       _ = n / (1 + ε) ^ 2 := by field_simp
   have hq₁_ub' : (q₁ : ℝ) ≤ n / (1 + ε) := by
-    have := upper (by positivity) hy₁_ge_x hq₁_ub
+    have hq₁_ub'0 :
+        (q₁ : ℝ) ≤ n / (1 + ε) ^ 2 +
+          n / (1 + ε) ^ 2 / (Real.log (n / (1 + ε) ^ 2)) ^ (3 : ℝ) := by
+      simpa [Real.rpow_natCast] using hq₁_ub
+    have := upper (by positivity) hy₁_ge_x hq₁_ub'0
     calc (q₁ : ℝ) ≤ (n / (1 + ε) ^ 2) * (1 + ε) := this
       _ = n / (1 + ε) := by field_simp
   have hq₂_ub' : (q₂ : ℝ) ≤ n := by
-    have := upper (by positivity) hy₂_ge_x hq₂_ub
+    have hq₂_ub'0 :
+        (q₂ : ℝ) ≤ n / (1 + ε) +
+          n / (1 + ε) / (Real.log (n / (1 + ε))) ^ (3 : ℝ) := by
+      simpa [Real.rpow_natCast] using hq₂_ub
+    have := upper (by positivity) hy₂_ge_x hq₂_ub'0
     calc (q₂ : ℝ) ≤ (n / (1 + ε)) * (1 + ε) := this
       _ = n := by field_simp
   -- StrictMono: q₀ < q₁ < q₂
@@ -1191,12 +1400,10 @@ theorem exists_q_primes {n : ℕ} (hn : n ≥ X₀ ^ 2) :
         _ < n / (1 + ε) := h1
     have hlog_y₂_gt : log (n / (1 + ε)) > log x := log_lt_log hx_pos hx_lt_y₂
     have hq₂_strict : (q₂ : ℝ) < n := by
-      calc (q₂ : ℝ) ≤ n / (1 + ε) + (n / (1 + ε)) / (log (n / (1 + ε))) ^ 3 := hq₂_ub
-        _ = (n / (1 + ε)) * (1 + 1 / (log (n / (1 + ε))) ^ 3) := by
-            have hpos : (0 : ℝ) < log (n / (1 + ε)) := hlog_y₂_pos
-            field_simp [hpos.ne']
-            rw [mul_comm]
-            norm_cast
+      calc (q₂ : ℝ) ≤ n / (1 + ε) + (n / (1 + ε)) / (Real.log (n / (1 + ε))) ^ 3 := hq₂_ub
+        _ = (n / (1 + ε)) * (1 + 1 / (Real.log (n / (1 + ε))) ^ 3) := by
+            have hpos : (0 : ℝ) < Real.log (n / (1 + ε)) := hlog_y₂_pos
+            field_simp [hpos.ne', mul_comm, mul_left_comm, mul_assoc]
         _ < (n / (1 + ε)) * (1 + 1 / (log x) ^ 3) := by
           apply mul_lt_mul_of_pos_left _ hy₂_pos
           gcongr
@@ -1258,9 +1465,10 @@ blueprint_comment /--
   -/)
   (proofUses := ["lem:choose-qi"])
   (latexEnv := "lemma")]
-theorem prod_q_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
+theorem prod_q_ge {n : ℕ} (hn : n ≥ X₁ ^ 2) :
     ∏ i, (1 + (1 : ℝ) / (exists_q_primes hn).choose i) ≤
       ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((i : ℕ) + 1 : ℝ) / n) := by
+  have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
   rw [show ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((i : ℕ) + 1 : ℝ) / n) =
       ∏ i : Fin 3, (1 + (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) / n) by
     simp only [Fin.prod_univ_three, Fin.val_zero, Fin.val_one, Fin.val_two]; ring_nf]
@@ -1271,12 +1479,12 @@ theorem prod_q_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   have := (exists_q_primes hn).choose_spec.2.2.1 i
   rw [show (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) / n =
       1 / (n / (1 + 1 / (log √(n : ℝ)) ^ 3) ^ ((3 : ℝ) - (i : ℕ)) ) by field_simp]
-  have f0 : (0 : ℝ) < (log √(n : ℝ)) ^ 3 := by positivity [hlog hn]
+  have f0 : (0 : ℝ) < (log √(n : ℝ)) ^ 3 := by positivity [hlog hn0]
   apply one_div_le_one_div_of_le
   · positivity
   · convert this using 1
     field_simp
-    rw [← rpow_add (hε_pos hn)]
+    rw [← rpow_add (hε_pos hn0)]
     simp
 
 @[blueprint
@@ -1312,12 +1520,13 @@ theorem prod_q_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   Taking \(1+\cdot\) and multiplying over \(i=1,2,3\) gives \eqref{eq:pi-lower}.
   -/)
   (latexEnv := "lemma")]
-theorem prod_p_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
+theorem prod_p_ge {n : ℕ} (hn : n ≥ X₁ ^ 2) :
     ∏ i, (1 + (1 : ℝ) /
         ((exists_p_primes hn).choose i * ((exists_p_primes hn).choose i + 1))) ≥
       ∏ i : Fin 3,
         (1 + 1 / ((1 + 1 / (log √(n : ℝ)) ^ 3) ^ (2 * (i : ℕ) + 2 : ℝ) * (n + √n))) := by
-  refine Finset.prod_le_prod (fun i _ => by positivity [hlog hn]) fun i _ => ?_
+  have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
+  refine Finset.prod_le_prod (fun i _ => by positivity [hlog hn0]) fun i _ => ?_
   set p := (exists_p_primes hn).choose
   have h₀ (i) : √n < p i := by
     have : p 0 ≤ p i := by
@@ -1373,36 +1582,37 @@ theorem prod_p_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   -/)
   (latexEnv := "lemma")
   (discussion := 534)]
-theorem pq_ratio_ge {n : ℕ} (hn : n ≥ X₀ ^ 2) :
+theorem pq_ratio_ge {n : ℕ} (hn : n ≥ X₁ ^ 2) :
     1 - ((4 : ℝ) * ∏ i, ((exists_p_primes hn).choose i : ℝ))
     / ∏ i, ((exists_q_primes hn).choose i : ℝ) ≥
     1 - 4 * (1 + 1 / (log √(n : ℝ)) ^ 3) ^ 12 / n ^ (3 / 2 : ℝ) := by
+  have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
   have l1 : ((1 + 1 / Real.log √n ^ 3) ^ 12 / n ^ (3 / 2 : ℝ)) =
     (n ^ (3 / 2 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ 6) /
     (n ^ (3 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ (- 6 : ℝ)) := by
-    rw [rpow_neg (hε_pos hn).le, ← div_eq_mul_inv, div_div_eq_mul_div, mul_assoc,
-      mul_comm, ← rpow_natCast, ← rpow_natCast (n := 6), ← rpow_add (hε_pos hn),
+    rw [rpow_neg (hε_pos hn0).le, ← div_eq_mul_inv, div_div_eq_mul_div, mul_assoc,
+      mul_comm, ← rpow_natCast, ← rpow_natCast (n := 6), ← rpow_add (hε_pos hn0),
       ← div_div_eq_mul_div]
     · congr
       · grind
       · rw [← rpow_sub (by norm_cast; linarith)]; grind
   have l2 : n ^ (3 / 2 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ 6 = ∏ i : Fin 3,
     √n * (1 + 1 / Real.log √n ^ 3) ^ ((i : ℝ) + 1) := by
-    rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn),
-      ← rpow_add (hε_pos hn), rpow_div_two_eq_sqrt _ (by linarith)]
+    rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn0),
+      ← rpow_add (hε_pos hn0), rpow_div_two_eq_sqrt _ (by linarith)]
     norm_num
   have l3 : n ^ (3 : ℝ) * (1 + 1 / Real.log √n ^ 3) ^ (- 6 : ℝ) =
     ∏ i : Fin 3, n * (1 + 1 / Real.log √n ^ 3) ^ (-((3 : ℝ) - i.1))  := by
-    rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn),
-      ← rpow_add (hε_pos hn)]
+    rw [← Finset.pow_card_mul_prod, Fin.prod_univ_three, ← rpow_add (hε_pos hn0),
+      ← rpow_add (hε_pos hn0)]
     norm_num
   rw [← mul_div_assoc', ← mul_div_assoc', l1, l2, l3]
   gcongr
-  · have := hε_pos hn
+  · have := hε_pos hn0
     exact Finset.prod_nonneg fun _ _ => by positivity
-  · exact Finset.prod_pos fun _ _ => by positivity [hε_pos hn]
+  · exact Finset.prod_pos fun _ _ => by positivity [hε_pos hn0]
   · exact (exists_p_primes hn).choose_spec.2.2.1 _
-  · exact fun _ _ => by positivity [hε_pos hn]
+  · exact fun _ _ => by positivity [hε_pos hn0]
   · exact (exists_q_primes hn).choose_spec.2.2.1 _
 
 blueprint_comment /--
@@ -1606,53 +1816,55 @@ theorem final_comparison {ε : ℝ} (hε : 0 ≤ ε ∧ ε ≤ 1 / (89693 ^ 2 : 
   "lem:pq-ratio", "lem:pi-product"])
   (latexEnv := "proposition")
   (discussion := 512)]
-noncomputable def Criterion.mk' {n : ℕ} (hn : n ≥ X₀ ^ 2) : Criterion where
+noncomputable def Criterion.mk' {n : ℕ} (hn : n ≥ X₁ ^ 2) : Criterion where
   n := n
   p := (exists_p_primes hn).choose
   q := (exists_q_primes hn).choose
-  hn := le_trans (by decide : 1 ≤ 89693 ^ 2) hn
+  hn := le_trans (by decide : 1 ≤ X₁ ^ 2) hn
   hp := (exists_p_primes hn).choose_spec.1
   hp_mono := (exists_p_primes hn).choose_spec.2.1
   hq := (exists_q_primes hn).choose_spec.1
   hq_mono := (exists_q_primes hn).choose_spec.2.1
   h_ord_1 := (exists_p_primes hn).choose_spec.2.2.2
   h_ord_2 := by
+    have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
     have hn_pos : (0 : ℝ) < n := by positivity
     have hp' : ((exists_p_primes hn).choose 2 : ℝ) ≤ √n * (1 + 1 / (log √n) ^ 3) ^ 3 := by
       convert (exists_p_primes hn).choose_spec.2.2.1 2 using 2; norm_cast
     have hq' : n * (1 + 1 / (log √n) ^ 3) ^ (-3 : ℝ) ≤ (exists_q_primes hn).choose 0 := by
       convert (exists_q_primes hn).choose_spec.2.2.1 0 using 2
       norm_num
-    have hε_pos := hε_pos hn
+    have hε_pos := hε_pos hn0
     have hmid :
         √n * (1 + 1 / (log √n) ^ 3) ^ 3 < n * (1 + 1 / (log √n) ^ 3) ^ (-3 : ℝ) := by
       norm_cast
       norm_num [rpow_neg_one] at *
       rw [← div_eq_mul_inv, lt_div_iff₀ <| pow_pos hε_pos 3]
       have : (1 + ((log √n) ^ 3)⁻¹) ^ 6 < 2 :=
-        calc (1 + ((log √n) ^ 3)⁻¹) ^ 6 < (1 + (11 ^ 3 : ℝ)⁻¹) ^ 6 := by gcongr; linarith [hlog hn]
+        calc (1 + ((log √n) ^ 3)⁻¹) ^ 6 < (1 + (11 ^ 3 : ℝ)⁻¹) ^ 6 := by gcongr; linarith [hlog hn0]
           _ ≤ 2 := by norm_num
-      nlinarith [mul_self_sqrt (Nat.cast_nonneg n), hsqrt_ge hn]
+      nlinarith [mul_self_sqrt (Nat.cast_nonneg n), hsqrt_ge hn0]
     exact_mod_cast hp'.trans_lt <| hmid.trans_le hq'
   h_ord_3 := (exists_q_primes hn).choose_spec.2.2.2
   h_crit := by
+    have hn0 : n ≥ X₀ ^ 2 := le_trans (by decide : X₀ ^ 2 ≤ X₁ ^ 2) hn
     have hn₀ : 0 ≤ Real.log √n := by
-      grw [hn]
+      grw [hn0]
       simp [log_nonneg]
     have h₁ : 1 - (4 : ℝ) *
         (∏ i, (exists_p_primes hn).choose i : ℝ) / ∏ i, ((exists_q_primes hn).choose i : ℝ) ≥
         1 - 4 * (1 + 0.000675) ^ 12 * ((1 / 89693) * (1 / n)) := by
-      grw [pq_ratio_ge hn, inv_cube_log_sqrt_le hn, ← inv_n_pow_3_div_2_le hn]
+      grw [pq_ratio_ge hn, inv_cube_log_sqrt_le hn0, ← inv_n_pow_3_div_2_le hn0]
       simp [field]
     have : 0 ≤ 1 - 4 * (1 + 0.000675 : ℝ) ^ 12 * ((1 / 89693) * (1 / n)) := by
-      grw [hn]
+      grw [hn0]
       norm_num
     have := this.trans h₁
-    have hn' : (0 : ℝ) ≤ 1 / ↑n ∧ (1 : ℝ) / ↑n ≤ 1 / 89693 ^ 2 := ⟨by simp, by grw [hn]; simp⟩
-    grw [Lcm.prod_q_ge hn, Lcm.prod_p_ge hn, h₁]
+    have hn' : (0 : ℝ) ≤ 1 / ↑n ∧ (1 : ℝ) / ↑n ≤ 1 / 89693 ^ 2 := ⟨by simp, by grw [hn0]; simp⟩
+    grw [Lcm_T1_C1.prod_q_ge hn, Lcm_T1_C1.prod_p_ge hn, h₁]
     simp_rw [div_eq_mul_one_div (_ ^ (_ : ℝ) : ℝ) (n : ℝ),
       show 3 / (8 * n : ℝ) = 3 / 8 * (1 / n) by field_simp, ← one_div_mul_one_div]
-    grw [inv_cube_log_sqrt_le hn, inv_n_add_sqrt_ge hn]
+    grw [inv_cube_log_sqrt_le hn0, inv_n_add_sqrt_ge hn0]
     set ε : ℝ := 1 / n
     calc
       _ ≤ ∏ i : Fin 3, (1 + (1 + 0.000675 : ℝ) ^ (i + 1 : ℝ) * ε) := by gcongr
@@ -1678,7 +1890,20 @@ blueprint_comment /--
   \(p_1,p_2,p_3,q_1,q_2,q_3\) satisfying the hypotheses of Theorem~\ref{thm:criterion}.
   Hence \(L_n\) is not highly abundant. -/)
   (proofUses := ["prop:ineq-holds-large-n", "thm:criterion"])]
-theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ 89693 ^ 2) : ¬HighlyAbundant (L n) :=
+theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ X₁ ^ 2) : ¬HighlyAbundant (L n) :=
   (Criterion.mk' hn).not_highlyAbundant
 
-end Lcm
+end Lcm_T1_C1
+
+
+
+/-
+BUILD: SUCCESS
+command: Lcm_T1_C1.lean
+attempts: 7
+start: Wed Jan 28 20:33:05 PST 2026
+end: Wed Jan 28 20:56:40 PST 2026
+elapsed: 23m35s
+C: X₁ ^ 2 (with X₁ = 140000 ^ 6, so C = 140000 ^ 12)
+checks: sorry occurs exactly once (in Dusart_thm); no axiom/admit tokens; Dusart_thm, HighlyAbundant, L, and L_not_HA_of_ge unchanged except numeric bound C
+-/
