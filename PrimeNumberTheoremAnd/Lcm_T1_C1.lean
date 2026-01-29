@@ -1907,3 +1907,67 @@ elapsed: 23m35s
 C: X₁ ^ 2 (with X₁ = 140000 ^ 6, so C = 140000 ^ 12)
 checks: sorry occurs exactly once (in Dusart_thm); no axiom/admit tokens; Dusart_thm, HighlyAbundant, L, and L_not_HA_of_ge unchanged except numeric bound C
 -/
+
+/-
+Frozen T1 Prompt
+You are a Lean 4 proof adaptation agent operating in a repo with a SINGLE target file:
+`Lcm_T1_C1.lean`.
+
+Goal (T1):
+Make `Lcm_T1_C1.lean` compile (any valid bound C is acceptable).
+
+Context:
+- `Lcm_T1_C1.lean` contains a theorem stub `Dusart_thm` written as `:= by sorry`.
+- That is the ONLY permitted incomplete proof in the entire file.
+- The statement of `Dusart_thm` has already been updated to a new prime-gap theorem, and now the file has compilation errors.
+
+The final theorem of interest is:
+
+theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ C) : ¬ HighlyAbundant (L n)
+
+where C is a numeric constant (originally 89693^2) that may be changed.
+
+Hard constraints (must obey):
+1) You may edit ONLY `Lcm_T1_C1.lean`. Do not touch any other file.
+2) Exactly ONE occurrence of the token `sorry` is allowed in `Lcm_T1_C1.lean`, and it must be the one inside `Dusart_thm`.
+   Do NOT introduce any other `sorry`, `admit`, or any new `axiom`.
+3) Do NOT attempt to prove `Dusart_thm`. Keep it as `:= by sorry`.
+4) `Dusart_thm` is LOCKED: do not edit its statement or its proof stub.
+5) The following definitions are LOCKED and must NOT be modified in any way:
+   - def HighlyAbundant (N : ℕ) : Prop :=
+       ∀ m : ℕ, m < N → σ m < σ N
+   - def L (n : ℕ) : ℕ :=
+       (Finset.Icc 1 n).lcm _root_.id
+6) The final theorem is LOCKED except for its numeric bound:
+   - The theorem must remain named L_not_HA_of_ge.
+   - The conclusion must remain ¬ HighlyAbundant (L n).
+   - You may change ONLY the numeric constant C in the hypothesis n ≥ C.
+   - You must NOT add extra hypotheses, change quantifiers, or weaken the conclusion.
+
+Allowed edits:
+- You may refactor proofs and intermediate lemmas freely.
+- You may add helper lemmas proved without sorry/admit.
+- You may adjust numeric thresholds/constants (including the final bound `C`) as needed for correctness.
+
+Procedure:
+A) Record a start timestamp (if you can run shell commands, use `date`).
+B) Run `lake build` (or `lake env lean Lcm_T1_C1.lean`) repeatedly until the file compiles.
+C) Do not stop until the build succeeds.
+
+Deliverables (only after SUCCESS):
+- Apply edits directly to `Lcm_T1_C1.lean`. Do NOT paste diffs or the full file.
+- Output ONLY:
+  * `BUILD: SUCCESS`
+  * the build command used
+  * number of build attempts
+  * start time, end time, and elapsed time (if available)
+  * the final numeric bound C appearing in:
+      theorem L_not_HA_of_ge (n : ℕ) (hn : n ≥ C) : ¬ HighlyAbundant (L n)
+  * confirmation that:
+      - `sorry` occurs exactly once (in `Dusart_thm`)
+      - there are no `axiom` or `admit` tokens in `Lcm_T1_C1.lean`
+      - Dusart_thm, HighlyAbundant, L, and the theorem name L_not_HA_of_ge
+        were not modified except for the numeric bound C
+
+Start now.
+-/
