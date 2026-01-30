@@ -1,10 +1,11 @@
 import Architect
+import Mathlib.NumberTheory.ArithmeticFunction.Defs
 import PrimeNumberTheoremAnd.Lcm.Base
 import PrimeNumberTheoremAnd.Lcm.Cert_ChoosePrime_lemmas
 
 namespace Lcm
 
-open ArithmeticFunction hiding log
+open ArithmeticFunction
 open Real Finset Nat
 open scoped BigOperators
 

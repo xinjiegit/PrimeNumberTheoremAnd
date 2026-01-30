@@ -1,10 +1,11 @@
 import Architect
+import Mathlib.NumberTheory.ArithmeticFunction.Misc
 import PrimeNumberTheoremAnd.Lcm.Cert_ChoosePrime_lemmas
 import PrimeNumberTheoremAnd.Lcm.ChoosePrime
 
 namespace Lcm
 
-open ArithmeticFunction hiding log
+open ArithmeticFunction
 open Finset Nat Real
 
 blueprint_comment /--

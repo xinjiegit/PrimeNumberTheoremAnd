@@ -1,10 +1,18 @@
 import PrimeNumberTheoremAnd.PrimeGaps.Provider
-import PrimeNumberTheoremAnd.Dusart
+import Mathlib.Analysis.Complex.ExponentialBounds
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Algebra.Order.Field.Basic
 
+open Real
+
 namespace PrimeGaps
 namespace Dusart
+
+theorem Dusart_thm :
+  ∀ x : ℝ,
+    x ≥ 89693 →
+      ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧ (p : ℝ) ≤ x + x / (Real.log x) ^ (3 : ℝ) := by
+  sorry
 
 abbrev X₀ : ℕ := 89693
 @[simp] lemma X₀_eq : X₀ = 89693 := rfl
@@ -86,7 +94,7 @@ lemma delta_sixth_power_lt_sqrt {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   have h3_le_sqrt : (3 : ℝ) ≤ √(n : ℝ) :=
     le_trans h3_le_X0 hX0_le_sqrt
   have hexp1_lt3 : Real.exp (1 : ℝ) < (3 : ℝ) := by
-    exact lt_trans Real.exp_one_lt_d9 (by norm_num)
+    simpa using Real.exp_one_lt_three
   have hexp1_lt_sqrt : Real.exp (1 : ℝ) < √(n : ℝ) :=
     lt_of_lt_of_le hexp1_lt3 h3_le_sqrt
   have hlog_gt1 : (1 : ℝ) < Real.log (√(n : ℝ)) := by
@@ -160,7 +168,7 @@ lemma delta_twelfth_power_le_n_pow_3_div_2 {n : ℕ} (hn : n ≥ X₀ ^ 2) :
   have h3_le_sqrt : (3 : ℝ) ≤ √(n : ℝ) :=
     le_trans h3_le_X0 hX0_le_sqrt
   have hexp1_lt3 : Real.exp (1 : ℝ) < (3 : ℝ) := by
-    exact lt_trans Real.exp_one_lt_d9 (by norm_num)
+    simpa using Real.exp_one_lt_three
   have hexp1_lt_sqrt : Real.exp (1 : ℝ) < √(n : ℝ) :=
     lt_of_lt_of_le hexp1_lt3 h3_le_sqrt
   have hlog_gt1 : (1 : ℝ) < Real.log (√(n : ℝ)) := by
@@ -873,7 +881,7 @@ theorem delta_ineq {n : ℕ} (hn : X₀ ^ 2 ≤ n) :
 theorem prime_in_Icc {x : ℝ} (hx : (X₀ : ℝ) ≤ x) :
     ∃ p : ℕ, Nat.Prime p ∧ x < (p : ℝ) ∧ (p : ℝ) ≤ x * (1 + δ x) := by
   have hx' : x ≥ (89693 : ℝ) := by simpa [X₀] using hx
-  rcases (_root_.Dusart.proposition_5_4 x hx') with ⟨p, hp, hxp, hpU⟩
+  rcases (Dusart_thm x hx') with ⟨p, hp, hxp, hpU⟩
   refine ⟨p, hp, hxp, ?_⟩
   simpa [δ, mul_add, mul_one, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using hpU
 

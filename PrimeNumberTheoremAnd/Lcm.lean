@@ -9,14 +9,14 @@ import PrimeNumberTheoremAnd.Lcm.Main
 •⁠  ⁠ChoosePrime.lean — theorems about choosing primes skeletons, depending on Cert.lean
 •⁠  ⁠Main.lean — the actual HA proof
 *** PrimeGaps/ ***
-•⁠  ⁠Dusart.lean — derives the standard Dusart statement (existence of a prime in ( [x, x(1+\delta(x))] )) from the Dusart.lean file
+•⁠  ⁠PrimeGaps/Dusart.lean — a Dusart-style prime-in-short-interval statement, packaged as a `PrimeGaps.Provider`
 •⁠  ⁠Latest.lean — a single switchboard module; Lcm only refers to this
 •⁠  ⁠Provider.lean — normalizes all prime-gap theorems to a fixed interface/version
 -/
 
 /- Pasted commented original file here for completeless -/
 
--- import PrimeNumberTheoremAnd.SecondarySummary
+
 
 -- namespace Lcm
 
