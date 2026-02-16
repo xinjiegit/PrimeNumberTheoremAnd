@@ -269,6 +269,13 @@ theorem proposition_13
   (discussion := 672)]
 theorem corollary_14 : Eθ.classicalBound 121.0961 (3/2) 2 5.5666305 2 := sorry
 
+abbrev table_15_margin : ℝ := 1.00001
+
+theorem remark_15' (x₀ : ℝ) (h : log x₀ ≥ 1000) :
+    Eθ.classicalBound ((FKS.A x₀) * table_15_margin) (3 / 2) 2 5.5666305 x₀ := by
+    sorry
+
+
 @[blueprint
   "fks2-remark-15"
   (title := "FKS2 Remark 15")
@@ -280,7 +287,19 @@ theorem corollary_14 : Eθ.classicalBound 121.0961 (3/2) 2 5.5666305 2 := sorry
   (proof := /-- From \cite[Table 6]{FKS} we have $\nu_{asymp}(x_0) \leq 10^{-200}$. Thus, one easily verifies that the rounding up involved in forming \cite[Table 6]{FKS} exceeds the rounding up also needed to apply this step. Consequently we may use values from $A_\theta$ taken from \cite[Table 6]{FKS} directly but this does, in contrast to Corollary \ref{fks2-corollary-14}, require the assumption $x > x_0$, as per that table. -/)
   (discussion := 674)]
 theorem remark_15 (x₀ : ℝ) (h : log x₀ ≥ 1000) :
-    Eθ.classicalBound (FKS.A x₀) (3/2) 2 5.5666305 x₀ := by sorry
+    Eθ.classicalBound ((FKS.A x₀) * (1 + ν_asymp (FKS.A x₀) (3 / 2) 2 5.5666305 x₀)) (3 / 2) 2 5.5666305 x₀ := by
+  have hEψ : Eψ.classicalBound (FKS.A x₀) (3 / 2) 2 5.5666305 x₀ :=
+    FKS.theorem_1_2b x₀ h
+  have hB : (3 / 2 : ℝ) > 2 ^ 2 / (8 * (5.5666305 : ℝ)) := by
+    have hR : (0 : ℝ) < 5.5666305 := by norm_num
+    have hden : (0 : ℝ) < 8 * (5.5666305 : ℝ) := by nlinarith
+    -- Use (div_lt_iff₀ hden) to clear the denominator.
+    have : (2 ^ 2 : ℝ) / (8 * (5.5666305 : ℝ)) < (3 / 2 : ℝ) := by
+      refine (div_lt_iff₀ hden).2 ?_
+      -- Goal: 2^2 < (3/2) * (8*R), which is immediate numerically.
+      nlinarith [hR]
+    simpa using this
+  simpa using proposition_13 (FKS.A x₀) (3 / 2) 2 5.5666305 x₀ hEψ hB
 
 
 blueprint_comment /--
