@@ -208,6 +208,258 @@ When integrating expressions involving $g$, the Dawson function naturally appear
   $D_+(x) := e^{-x^2} \int_0^x e^{t^2}\ dt$. -/)]
 noncomputable def dawson (x : ℝ) : ℝ := exp (-x ^ 2) * ∫ t in 0..x, exp (t ^ 2)
 
+lemma dawson_zero : dawson 0 = 0 := by simp [dawson]
+
+lemma dawson_hasDerivAt (x : ℝ) : HasDerivAt dawson (1 - 2 * x * dawson x) x := by
+  unfold dawson
+  have hf : HasDerivAt (fun x => exp (-x ^ 2)) (-2 * x * exp (-x ^ 2)) x := by
+    have h3 := (hasDerivAt_pow 2 x).neg.exp
+    simp only [Nat.cast_ofNat, Pi.neg_apply] at h3
+    exact h3.congr_deriv (by ring)
+  have hg : HasDerivAt (fun x => ∫ t in (0:ℝ)..x, exp (t ^ 2)) (exp (x ^ 2)) x := by
+    apply intervalIntegral.integral_hasDerivAt_right
+    · exact (continuous_exp.comp (continuous_pow 2)).intervalIntegrable _ _
+    · exact (continuous_exp.comp (continuous_pow 2)).stronglyMeasurableAtFilter _ _
+    · exact (continuous_exp.comp (continuous_pow 2)).continuousAt
+  have hprod := hf.mul hg
+  refine hprod.congr_deriv ?_
+  rw [show exp (-x ^ 2) * exp (x ^ 2) = 1 from by rw [← exp_add]; simp]
+  ring
+
+lemma dawson_differentiable : Differentiable ℝ dawson :=
+  fun x => (dawson_hasDerivAt x).differentiableAt
+
+lemma dawson_continuous : Continuous dawson :=
+  dawson_differentiable.continuous
+
+lemma dawson_deriv (x : ℝ) : deriv dawson x = 1 - 2 * x * dawson x :=
+  (dawson_hasDerivAt x).deriv
+
+lemma integral_exp_sq_pos {x : ℝ} (hx : x > 0) : ∫ t in (0:ℝ)..x, exp (t ^ 2) > 0 := by
+  refine' lt_of_lt_of_le _ ( intervalIntegral.integral_mono_on _ _ _ fun t ht => Real.one_le_exp ( sq_nonneg t ) ) <;> norm_num [ hx ];
+  · bound;
+  · exact Continuous.intervalIntegrable ( by continuity ) _ _
+
+lemma dawson_pos {x : ℝ} (hx : x > 0) : dawson x > 0 := by
+  unfold dawson; exact mul_pos (exp_pos _) (integral_exp_sq_pos hx)
+
+lemma dawson_neg_eq (x : ℝ) : dawson (-x) = -dawson x := by
+  simp +decide [ dawson, mul_comm ];
+  rw [ ← mul_neg, ← intervalIntegral.integral_symm ];
+  convert rfl using 2 ; convert intervalIntegral.integral_comp_neg _ using 2 <;> norm_num
+
+lemma dawson_tendsto_atTop : Filter.Tendsto dawson Filter.atTop (nhds 0) := by
+  -- We'll use the fact that $ \int_0^x e^{t^2} dt \leq \frac{e^{x^2}}{x} $ for all $ x > 0 $.
+  have h_bound : ∀ x > 0, ∫ t in (0 : ℝ)..x, (Real.exp (t ^ 2)) ≤ (Real.exp (x ^ 2)) / x := by
+    intro x hx_pos
+    have h_integral_bound : ∫ t in (0 : ℝ)..x, Real.exp (t ^ 2) ≤ ∫ t in (0 : ℝ)..x, Real.exp (x * t) := by
+      refine' intervalIntegral.integral_mono_on _ _ _ _ <;> norm_num;
+      · positivity;
+      · exact Continuous.intervalIntegrable ( by continuity ) _ _;
+      · exact Continuous.intervalIntegrable ( by continuity ) _ _;
+      · exact fun y hy₁ hy₂ => by nlinarith;
+    simp_all +decide [ div_eq_inv_mul, intervalIntegral.integral_comp_mul_left, hx_pos.ne' ];
+    exact h_integral_bound.trans ( mul_le_mul_of_nonneg_left ( by ring_nf; norm_num ) ( by positivity ) );
+  -- Using the bound, we get $ \exp(-x^2) \cdot \frac{\exp(x^2)}{x} = \frac{1}{x} $.
+  have h_exp_bound : ∀ x > 0, (Real.exp (-x ^ 2)) * (∫ t in (0 : ℝ)..x, (Real.exp (t ^ 2))) ≤ 1 / x := by
+    intro x hx; convert mul_le_mul_of_nonneg_left ( h_bound x hx ) ( Real.exp_nonneg ( -x ^ 2 ) ) using 1 ; rw [ ← mul_div_assoc, ← Real.exp_add ] ; norm_num;
+  exact squeeze_zero_norm' ( by filter_upwards [ Filter.eventually_gt_atTop 0 ] with x hx using by rw [ FKS2.dawson ] ; rw [ Real.norm_of_nonneg ( mul_nonneg ( Real.exp_nonneg _ ) ( intervalIntegral.integral_nonneg ( by positivity ) fun t ht => Real.exp_nonneg _ ) ) ] ; exact h_exp_bound x hx ) ( tendsto_const_nhds.div_atTop Filter.tendsto_id )
+
+lemma dawson_tendsto_atBot : Filter.Tendsto dawson Filter.atBot (nhds 0) := by
+  -- We'll use that $dawson(-x) = -dawson(x)$ to rewrite the limit expression.
+  have h_neg : Filter.Tendsto (fun x : ℝ => dawson (-x)) Filter.atTop (nhds 0) := by
+    -- By definition of $dawson$, we know that $dawson(-x) = -dawson(x)$.
+    have h_neg : ∀ x : ℝ, dawson (-x) = -dawson x := by
+      -- By definition of $dawson$, we know that $dawson(-x) = -dawson(x)$ for all $x$.
+      intros x
+      apply dawson_neg_eq
+    simp [h_neg] at *; exact (by
+    simpa using Filter.Tendsto.neg ( FKS2.dawson_tendsto_atTop )); -- This completes the proof using the fact that the negative of a function that tends to zero also tends to zero.;
+  convert h_neg.comp Filter.tendsto_neg_atBot_atTop using 2 ; aesop
+
+lemma dawson_attains_sup : ∃ x₀ : ℝ, ∀ x, dawson x ≤ dawson x₀ := by
+  -- Use the fact that dawson is continuous and attains its maximum on any compact interval.
+  have h_compact : ∃ M : ℝ, ∀ x, |x| ≥ M → dawson x < dawson 1 := by
+    have h_compact : Filter.Tendsto dawson Filter.atTop (nhds 0) ∧ Filter.Tendsto dawson Filter.atBot (nhds 0) := by
+      exact ⟨ dawson_tendsto_atTop, dawson_tendsto_atBot ⟩;
+    -- Use the fact that dawson tends to 0 at infinity to find such an M.
+    obtain ⟨M_top, hM_top⟩ : ∃ M_top : ℝ, ∀ x : ℝ, x ≥ M_top → dawson x < dawson 1 := by
+      simpa using h_compact.1.eventually ( gt_mem_nhds <| show 0 < dawson 1 from by exact dawson_pos <| by norm_num ) |> fun h => h.filter_mono Filter.tendsto_id;
+    obtain ⟨M_bot, hM_bot⟩ : ∃ M_bot : ℝ, ∀ x : ℝ, x ≤ M_bot → dawson x < dawson 1 := by
+      have := h_compact.2.eventually ( gt_mem_nhds <| show 0 < dawson 1 from dawson_pos zero_lt_one ) ; aesop;
+    use max M_top (abs M_bot) + 1; intros x hx; (
+    cases abs_cases x <;> cases abs_cases M_bot <;> first | exact hM_top _ <| by linarith [ le_max_left M_top |M_bot|, le_max_right M_top |M_bot| ] | exact hM_bot _ <| by linarith [ le_max_left M_top |M_bot|, le_max_right M_top |M_bot| ] ;);
+  obtain ⟨M, hM⟩ := h_compact
+  have h_compact_interval : ∃ x₀ ∈ Set.Icc (-M) M, ∀ x ∈ Set.Icc (-M) M, dawson x ≤ dawson x₀ := by
+    have h_continuous : ContinuousOn dawson (Set.Icc (-M) M) := by
+      exact dawson_continuous.continuousOn;
+    exact ( IsCompact.exists_isMaxOn ( CompactIccSpace.isCompact_Icc ) ⟨ -M, by norm_num; linarith [ show M ≥ 0 from le_of_not_gt fun h => by have := hM 1 ( by rw [ abs_of_nonneg ] <;> linarith ) ; linarith [ dawson_pos zero_lt_one ] ] ⟩ h_continuous ) |> fun ⟨ x₀, hx₀₁, hx₀₂ ⟩ => ⟨ x₀, hx₀₁, fun x hx => hx₀₂ hx ⟩ ;
+  obtain ⟨x₀, hx₀_interval, hx₀_max⟩ := h_compact_interval
+  use x₀
+  intro x
+  by_cases hx : |x| < M
+  ·
+    exact hx₀_max x ⟨ by linarith [ abs_lt.mp hx ], by linarith [ abs_lt.mp hx ] ⟩
+  ·
+    exact le_trans ( le_of_lt ( hM x ( le_of_not_gt hx ) ) ) ( hx₀_max 1 ( by constructor <;> linarith [ hx₀_interval.1, hx₀_interval.2, show M ≥ 1 by exact le_of_not_gt fun h => by have := hM 1 ( by norm_num; linarith ) ; linarith [ show dawson 1 > 0 from dawson_pos zero_lt_one ] ] ) ) |> le_trans <| by norm_num;
+  skip
+
+lemma dawson_maximizer_pos {x₀ : ℝ} (hmax : ∀ x, dawson x ≤ dawson x₀) : x₀ > 0 := by
+  -- By contradiction, assume $x₀ \leq 0$.
+  by_contra hx₀_nonpos;
+  -- If $x₀ \leq 0$, then $dawson(x₀) \leq 0$ since $dawson$ is non-positive for non-positive arguments.
+  have h_nonpos : dawson x₀ ≤ 0 := by
+    unfold dawson;
+    rw [ intervalIntegral.integral_of_ge ( by linarith ) ];
+    exact mul_nonpos_of_nonneg_of_nonpos ( Real.exp_nonneg _ ) ( neg_nonpos_of_nonneg ( MeasureTheory.integral_nonneg fun _ => Real.exp_nonneg _ ) );
+  exact not_le_of_gt ( dawson_pos zero_lt_one ) ( le_trans ( hmax 1 ) h_nonpos )
+
+lemma dawson_critical_value {x₀ : ℝ} (hx₀ : x₀ > 0) (hcrit : deriv dawson x₀ = 0) :
+    dawson x₀ = 1 / (2 * x₀) := by
+  rw [dawson_deriv] at hcrit
+  have : x₀ ≠ 0 := ne_of_gt hx₀
+  field_simp at hcrit ⊢; linarith
+
+lemma dawson_deriv_unique_zero {a b : ℝ} (ha : a > 0) (hb : b > 0)
+    (hda : deriv dawson a = 0) (hdb : deriv dawson b = 0) : a = b := by
+      -- By definition of $dawson$, we know that its derivative is given by $dawson'(x) = 1 - 2x dawson(x)$.
+      have h_deriv : ∀ x, deriv dawson x = 1 - 2 * x * dawson x := by
+        exact?;
+      have h_int : ∀ x > 0, dawson x = 1 / (2 * x) → (∫ t in (0:ℝ)..x, Real.exp (t^2)) = Real.exp (x^2) / (2 * x) := by
+        intro x hx hx'; rw [ eq_div_iff ] at * <;> try linarith;
+        unfold dawson at hx'; nlinarith [ Real.exp_pos ( -x ^ 2 ), Real.exp_pos ( x ^ 2 ), Real.exp_neg ( x ^ 2 ), mul_inv_cancel₀ ( ne_of_gt ( Real.exp_pos ( x ^ 2 ) ) ) ] ;
+      have hG_deriv : ∀ x > 0, deriv (fun x => (∫ t in (0:ℝ)..x, Real.exp (t^2)) - Real.exp (x^2) / (2 * x)) x > 0 := by
+        intro x x_pos; erw [ deriv_sub ] <;> norm_num [ mul_comm, x_pos.ne' ];
+        · rw [ show deriv ( fun x => ∫ t in ( 0 : ℝ )..x, Real.exp ( t ^ 2 ) ) x = Real.exp ( x ^ 2 ) by apply_rules [ Continuous.deriv_integral ] ; continuity ] ; rw [ div_lt_iff₀ ] <;> nlinarith [ Real.exp_pos ( x ^ 2 ), mul_pos x_pos ( Real.exp_pos ( x ^ 2 ) ) ];
+        · exact differentiableAt_of_deriv_ne_zero ( by rw [ show deriv _ x = _ from by apply_rules [ Continuous.deriv_integral ] ; continuity ] ; positivity );
+      -- Since $G$ is strictly increasing on $(0, \infty)$, it can have at most one zero.
+      have hG_unique_zero : ∀ x y, 0 < x → 0 < y → (∫ t in (0:ℝ)..x, Real.exp (t^2)) - Real.exp (x^2) / (2 * x) = 0 → (∫ t in (0:ℝ)..y, Real.exp (t^2)) - Real.exp (y^2) / (2 * y) = 0 → x = y := by
+        intros x y hx hy hx_zero hy_zero
+        by_contra hxy_ne
+        have hG_inc : StrictMonoOn (fun x => (∫ t in (0:ℝ)..x, Real.exp (t^2)) - Real.exp (x^2) / (2 * x)) (Set.Ioi 0) := by
+          -- Apply the fact that if the derivative of a function is positive on an interval, then the function is strictly increasing on that interval.
+          apply strictMonoOn_of_deriv_pos;
+          · exact convex_Ioi 0;
+          · exact fun x hx => DifferentiableAt.continuousAt ( differentiableAt_of_deriv_ne_zero ( ne_of_gt ( hG_deriv x hx ) ) ) |> ContinuousAt.continuousWithinAt;
+          · aesop
+        exact hxy_ne (hG_inc.eq_iff_eq hx hy |>.1 (by linarith));
+      contrapose! hG_unique_zero;
+      exact ⟨ a, b, ha, hb, sub_eq_zero.mpr <| h_int a ha <| by rw [ h_deriv ] at hda; exact eq_one_div_of_mul_eq_one_left <| by linarith, sub_eq_zero.mpr <| h_int b hb <| by rw [ h_deriv ] at hdb; exact eq_one_div_of_mul_eq_one_left <| by linarith, hG_unique_zero ⟩
+
+lemma dawson_deriv_neg {x₀ x : ℝ} (hx₀ : x₀ > 0) (hcrit : deriv dawson x₀ = 0)
+    (hx : x > x₀) : deriv dawson x < 0 := by
+      -- By the uniqueness of zeros, away from x₀ there are no other zeros of dawson'. Since dawson'(x₀) = 0 and dawson'(x₀+ε) < 0 for small ε, dawson' must be negative on (x₀, ∞).
+      have h_unique : ∀ x > x₀, deriv dawson x ≠ 0 := by
+        intros x hx; by_contra h_contra; have := @dawson_deriv_unique_zero x₀ x hx₀ ( lt_trans hx₀ hx ) hcrit h_contra; aesop;
+      -- By the continuity of dawson', there exists a δ > 0 such that dawson' is negative on (x₀, x₀ + δ).
+      obtain ⟨δ, hδ_pos, hδ⟩ : ∃ δ > 0, ∀ x, x₀ < x ∧ x < x₀ + δ → deriv dawson x < 0 := by
+        have h_cont : HasDerivAt (deriv dawson) (-1 / x₀) x₀ := by
+          have h_second_deriv : deriv (deriv dawson) x₀ = -1 / x₀ := by
+            rw [ show deriv dawson = fun x => 1 - 2 * x * dawson x from funext dawson_deriv ] ; norm_num [ hx₀.ne', hcrit, mul_comm ] ; ring;
+            norm_num [ hx₀.ne', hcrit, dawson_differentiable.differentiableAt ] ; ring;
+            rw [ dawson_critical_value hx₀ hcrit ] ; ring;
+          exact h_second_deriv ▸ hasDerivAt_deriv_iff.mpr ( show DifferentiableAt ℝ ( deriv dawson ) x₀ from differentiableAt_of_deriv_ne_zero ( by aesop ) );
+        have := Metric.tendsto_nhds_nhds.1 h_cont.isLittleO.tendsto_div_nhds_zero;
+        obtain ⟨ δ, hδ₁, H ⟩ := this ( 1 / x₀ ) ( by positivity ) ; use δ, hδ₁; intros x hx; have := H ( show |x - x₀| < δ from abs_lt.mpr ⟨ by linarith, by linarith ⟩ ) ; simp_all +decide [ div_eq_mul_inv, abs_mul, abs_inv, abs_of_pos ] ;
+        cases abs_cases ( deriv dawson x + ( x - x₀ ) * x₀⁻¹ ) <;> nlinarith [ inv_pos.2 hx₀, mul_inv_cancel₀ ( ne_of_gt hx₀ ), mul_inv_cancel₀ ( ne_of_gt ( sub_pos.2 hx.1 ) ), mul_inv_cancel₀ ( ne_of_gt ( sub_pos.2 hx.1 ) ), mul_pos ( sub_pos.2 hx.1 ) ( inv_pos.2 hx₀ ) ];
+      -- By the Intermediate Value Theorem, since dawson' is continuous and changes sign at x₀, it must be negative on (x₀, ∞).
+      have h_ivt : ∀ x, x₀ < x → deriv dawson x < 0 := by
+        intro x hx; contrapose! h_unique;
+        have h_ivt : IsConnected (Set.image (deriv dawson) (Set.Ioi x₀)) := by
+          apply_rules [ IsConnected.image, isConnected_Ioi ];
+          exact Continuous.continuousOn ( by rw [ show deriv dawson = fun x => 1 - 2 * x * dawson x from funext fun x => dawson_deriv x ] ; exact Continuous.sub continuous_const <| Continuous.mul ( continuous_const.mul continuous_id' ) <| dawson_continuous );
+        exact h_ivt.Icc_subset ( Set.mem_image_of_mem _ <| show x₀ < x₀ + δ / 2 by linarith ) ( Set.mem_image_of_mem _ <| show x₀ < x by linarith ) ⟨ by linarith [ hδ ( x₀ + δ / 2 ) ⟨ by linarith, by linarith ⟩ ], by linarith ⟩;
+      exact h_ivt x hx
+
+lemma dawson_deriv_pos {x₀ x : ℝ} (hx₀ : x₀ > 0) (hcrit : deriv dawson x₀ = 0)
+    (hxpos : x > 0) (hx : x < x₀) : deriv dawson x > 0 := by
+      -- By the uniqueness of zeros, away from x₀, dawson' cannot be 0 on (0, x₀).
+      have h_unique : ∀ x, 0 < x → x < x₀ → deriv dawson x ≠ 0 := by
+        intros x hxpos hx_lt_x₀ h_deriv_zero
+        have h_eq_x₀ : x = x₀ := by
+          apply dawson_deriv_unique_zero hxpos hx₀ h_deriv_zero hcrit
+        linarith [hx_lt_x₀];
+      -- Since $dawson$ is differentiable and its derivative is continuous, we know that $dawson'$ is continuous on the closed interval $[0, x₀]$.
+      have h_cont : ContinuousOn (deriv dawson) (Set.Icc 0 x₀) := by
+        exact Continuous.continuousOn ( by rw [ show deriv dawson = fun x => 1 - 2 * x * dawson x from funext fun x => dawson_deriv x ] ; exact Continuous.sub continuous_const <| Continuous.mul ( continuous_const.mul continuous_id' ) <| by exact FKS2.dawson_continuous );
+      contrapose! h_unique;
+      -- By the Intermediate Value Theorem, since $dawson'$ is continuous on $[0, x₀]$ and $dawson'(x) \leq 0$ while $dawson'(0) > 0$, there must be some $c \in (0, x)$ such that $dawson'(c) = 0$.
+      have h_ivt : ∃ c ∈ Set.Ioo 0 x, deriv dawson c = 0 := by
+        apply_rules [ intermediate_value_Ioo' ] <;> norm_num [ * ];
+        · linarith;
+        · exact h_cont.mono ( Set.Icc_subset_Icc_right hx.le );
+        · exact ⟨ lt_of_le_of_ne h_unique fun h => by have := dawson_deriv_unique_zero ( show 0 < x from hxpos ) hx₀ ( by linarith ) ( by linarith ) ; linarith, by rw [ dawson_deriv ] ; norm_num ⟩;
+      exact ⟨ h_ivt.choose, h_ivt.choose_spec.1.1, h_ivt.choose_spec.1.2.trans hx, h_ivt.choose_spec.2 ⟩
+
+lemma dawson_strictAntiOn {x₀ : ℝ} (hx₀ : x₀ > 0) (hcrit : deriv dawson x₀ = 0) :
+    StrictAntiOn dawson (Set.Ioi x₀) := by
+  apply strictAntiOn_of_deriv_neg (convex_Ioi x₀)
+  · exact fun x _ => dawson_continuous.continuousWithinAt
+  · intro x hx
+    rw [interior_Ioi] at hx
+    exact dawson_deriv_neg hx₀ hcrit hx
+
+lemma dawson_deriv_pos_at_924 : deriv dawson 0.924 > 0 := by
+  rw [ dawson_deriv ] ; ring;
+  norm_num [ dawson ];
+  -- Now use the provided solution to approximate the integral.
+  have h_integral_approx : ∫ t in (0 : ℝ)..231 / 250, Real.exp (t ^ 2) ≤ ∫ t in (0 : ℝ)..231 / 250, ∑ k ∈ Finset.range 6, (t ^ 2) ^ k / Nat.factorial k + Real.exp 1 * (t ^ 2) ^ 6 / Nat.factorial 6 := by
+    refine' intervalIntegral.integral_mono_on _ _ _ _ <;> norm_num;
+    · exact Continuous.intervalIntegrable ( by continuity ) _ _;
+    · exact Continuous.intervalIntegrable ( by continuity ) _ _;
+    · intro x hx₁ hx₂; rw [ Real.exp_eq_exp_ℝ ] ; norm_num [ NormedSpace.exp_eq_tsum_div ];
+      rw [ ← Summable.sum_add_tsum_nat_add 6 ];
+      · norm_num [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, ← tsum_mul_left ];
+        field_simp;
+        refine' Summable.tsum_le_tsum _ _ _;
+        · intro i; rw [ div_le_div_iff₀ ] <;> first | positivity | norm_num [ Nat.factorial_succ ] ; ring_nf ;
+          norm_num [ pow_mul' ];
+          nlinarith [ show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i ^ 2 by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i ^ 3 by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i ^ 4 by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i ^ 5 by positivity, show 0 ≤ x ^ 12 * ( i.factorial : ℝ ) * i ^ 6 by positivity, show ( x ^ 2 ) ^ i ≤ 1 by exact pow_le_one₀ ( by positivity ) ( by nlinarith ) ];
+        · exact Real.summable_pow_div_factorial _ |> Summable.comp_injective <| add_left_injective _;
+        · exact Summable.mul_left _ <| by simpa [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm ] using Real.summable_pow_div_factorial 1 |> Summable.mul_right 720⁻¹;
+      · exact Real.summable_pow_div_factorial _;
+  refine' lt_of_le_of_lt ( mul_le_mul_of_nonneg_right ( mul_le_mul_of_nonneg_left h_integral_approx <| by positivity ) <| by positivity ) _ ; norm_num [ Finset.sum_range_succ, Nat.factorial ];
+  norm_num [ ← pow_mul, mul_assoc ];
+  have := Real.exp_one_lt_d9.le ; norm_num1 at * ; rw [ Real.exp_neg ] ; rw [ inv_mul_lt_iff₀ ] <;> norm_num at *;
+  · -- Now use the exponential property to simplify the expression.
+    have h_exp : Real.exp (53361 / 62500) > 1 + 53361 / 62500 + (53361 / 62500)^2 / 2 + (53361 / 62500)^3 / 6 + (53361 / 62500)^4 / 24 + (53361 / 62500)^5 / 120 + (53361 / 62500)^6 / 720 := by
+      rw [ Real.exp_eq_exp_ℝ ];
+      rw [ NormedSpace.exp_eq_tsum_div ] ; exact lt_of_lt_of_le ( by norm_num ) ( Summable.sum_le_tsum ( Finset.range 8 ) ( fun _ _ => by positivity ) ( by exact Real.summable_pow_div_factorial _ ) ) ;
+    linarith;
+  · positivity
+
+lemma dawson_deriv_neg_at_925 : deriv dawson 0.925 < 0 := by
+  -- Now use the provided solution to simplify the expression.
+  have h_integral : ∫ t in (0 : ℝ)..37 / 40, Real.exp (t ^ 2) > 1 / (2 * (37 / 40)) * Real.exp ((37 / 40) ^ 2) := by
+    -- We'll use the fact that $\int_0^{37/40} e^{t^2} dt$ is greater than $\int_0^{37/40} (1 + t^2 + t^4/2 + t^6/6 + t^8/24 + t^{10}/120 + t^{12}/720) dt$.
+    have h_integral_bound : ∫ t in (0 : ℝ)..37 / 40, Real.exp (t ^ 2) > ∫ t in (0 : ℝ)..37 / 40, (1 + t ^ 2 + t ^ 4 / 2 + t ^ 6 / 6 + t ^ 8 / 24 + t ^ 10 / 120 + t ^ 12 / 720) := by
+      -- We'll use the fact that $e^{t^2} > 1 + t^2 + \frac{t^4}{2} + \frac{t^6}{6} + \frac{t^8}{24} + \frac{t^{10}}{120} + \frac{t^{12}}{720}$ for all $t \neq 0$.
+      have h_exp_gt_poly : ∀ t : ℝ, t ≠ 0 → Real.exp (t ^ 2) > 1 + t ^ 2 + t ^ 4 / 2 + t ^ 6 / 6 + t ^ 8 / 24 + t ^ 10 / 120 + t ^ 12 / 720 := by
+        intro t ht_ne_zero
+        have h_exp_gt_poly : Real.exp (t ^ 2) > ∑ k ∈ Finset.range 7, (t ^ 2) ^ k / Nat.factorial k := by
+          norm_num [ Real.exp_eq_exp_ℝ, NormedSpace.exp_eq_tsum_div ];
+          exact lt_of_lt_of_le ( by norm_num [ Finset.sum_range_succ, Nat.factorial ] ; positivity ) ( Summable.sum_le_tsum ( Finset.range 8 ) ( fun _ _ => by positivity ) ( by simpa using Real.summable_pow_div_factorial _ ) );
+        convert h_exp_gt_poly using 1 ; norm_num [ Finset.sum_range_succ, Nat.factorial ] ; ring;
+      -- Apply the fact that the integral of a positive function over an interval is positive.
+      have h_integral_pos : 0 < ∫ t in (0 : ℝ)..37 / 40, (Real.exp (t ^ 2) - (1 + t ^ 2 + t ^ 4 / 2 + t ^ 6 / 6 + t ^ 8 / 24 + t ^ 10 / 120 + t ^ 12 / 720)) := by
+        rw [ intervalIntegral.integral_of_le ] <;> norm_num;
+        rw [ MeasureTheory.integral_pos_iff_support_of_nonneg_ae ] <;> norm_num;
+        · exact ( lt_of_lt_of_le ( by norm_num ) ( MeasureTheory.measure_mono ( show Set.Ioc ( 0 : ℝ ) ( 37 / 40 ) ⊆ ( Function.support fun x : ℝ => Real.exp ( x ^ 2 ) - ( 1 + x ^ 2 + x ^ 4 / 2 + x ^ 6 / 6 + x ^ 8 / 24 + x ^ 10 / 120 + x ^ 12 / 720 ) ) ∩ Set.Ioc 0 ( 37 / 40 ) from fun x hx => ⟨ ne_of_gt <| sub_pos.mpr <| h_exp_gt_poly x <| ne_of_gt hx.1, hx ⟩ ) ) );
+        · exact Filter.eventually_inf_principal.mpr ( Filter.Eventually.of_forall fun x hx => sub_nonneg.mpr <| le_of_lt <| h_exp_gt_poly x hx.1.ne' );
+        · exact Continuous.integrableOn_Ioc ( by continuity );
+      rw [ intervalIntegral.integral_sub ( by exact Continuous.intervalIntegrable ( by continuity ) _ _ ) ( by exact Continuous.intervalIntegrable ( by continuity ) _ _ ) ] at h_integral_pos ; linarith;
+    refine lt_of_le_of_lt ?_ h_integral_bound ; norm_num [ Real.exp_pos ];
+    have := Real.exp_one_lt_d9.le;
+    rw [ show ( 1369 / 1600 : ℝ ) = 1 - 231 / 1600 by norm_num, Real.exp_sub ];
+    rw [ mul_div, div_le_iff₀ ( Real.exp_pos _ ) ];
+    -- We'll use the exponential property to simplify the expression. Note that $e^{231/1600} = \left(e^{1/1600}\right)^{231}$.
+    have h_exp : Real.exp (231 / 1600) = (Real.exp (1 / 1600)) ^ 231 := by
+      rw [ ← Real.exp_nat_mul ] ; norm_num;
+    nlinarith [ Real.add_one_le_exp ( 1 / 1600 : ℝ ), pow_le_pow_left₀ ( by positivity ) ( Real.add_one_le_exp ( 1 / 1600 : ℝ ) ) 231 ];
+  erw [ deriv_mul ] <;> norm_num;
+  · rw [ show deriv ( fun x => ∫ t in ( 0 : ℝ )..x, Real.exp ( t ^ 2 ) ) ( 37 / 40 ) = Real.exp ( ( 37 / 40 ) ^ 2 ) by apply_rules [ Continuous.deriv_integral ] ; continuity ] ; nlinarith [ Real.exp_pos ( - ( 1369 / 1600 ) ), Real.exp_pos ( 1369 / 1600 ) ];
+  · exact differentiableAt_of_deriv_ne_zero ( by rw [ show deriv _ _ = _ from by apply_rules [ Continuous.deriv_integral ] ; continuity ] ; positivity )
+
 
 @[blueprint
   "fks2-remark-after-corollary-11"
@@ -220,7 +472,24 @@ noncomputable def dawson (x : ℝ) : ℝ := exp (-x ^ 2) * ∫ t in 0..x, exp (t
   (discussion := 616)]
 theorem remark_after_corollary_11 :
     ∃ x₀ : ℝ, x₀ ∈ Set.Icc 0.924 0.925 ∧ (∀ x, dawson x ≤ dawson x₀) ∧
-      StrictAntiOn dawson (Set.Ioi x₀) := sorry
+      StrictAntiOn dawson (Set.Ioi x₀) := by
+  obtain ⟨x₀, hmax⟩ := dawson_attains_sup
+  have hx₀_pos := dawson_maximizer_pos hmax
+  have hcrit : deriv dawson x₀ = 0 := by
+    have hlm : IsLocalMax dawson x₀ := Filter.Eventually.of_forall (fun y => hmax y)
+    have := IsLocalMax.hasDerivAt_eq_zero hlm (dawson_hasDerivAt x₀)
+    rw [dawson_deriv]; linarith
+  have hx₀_lower : 0.924 ≤ x₀ := by
+    by_contra h; push_neg at h
+    have h1 : deriv dawson 0.924 > 0 := dawson_deriv_pos_at_924
+    have h2 : deriv dawson 0.924 < 0 := dawson_deriv_neg hx₀_pos hcrit (by linarith)
+    linarith
+  have hx₀_upper : x₀ ≤ 0.925 := by
+    by_contra h; push_neg at h
+    have h1 : deriv dawson 0.925 < 0 := dawson_deriv_neg_at_925
+    have h2 : deriv dawson 0.925 > 0 := dawson_deriv_pos hx₀_pos hcrit (by norm_num) (by linarith)
+    linarith
+  exact ⟨x₀, ⟨hx₀_lower, hx₀_upper⟩, hmax, dawson_strictAntiOn hx₀_pos hcrit⟩
 
 
 blueprint_comment /--
