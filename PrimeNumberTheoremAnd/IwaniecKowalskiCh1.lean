@@ -1,5 +1,5 @@
 import Architect
-import Mathlib
+import Mathlib.NumberTheory.LSeries.Dirichlet
 
 open ArithmeticFunction hiding log
 
@@ -60,7 +60,7 @@ lemma IsCompletelyAdditive.isAdditive [AddZeroClass R] {f : ArithmeticFunction R
   -/)]
 lemma unique_divisor_decomposition {a b d : ℕ} (hab : Coprime a b) (hd : d ∣ a * b) :
     ∃! p : ℕ × ℕ, p.1 ∣ a ∧ p.2 ∣ b ∧ p.1 * p.2 = d := by
-  sorry
+  sorry -- UPSTREAMED TO MATHLIB #36495
 
 /-- If `f` is a multiplicative arithmetic function, then for coprime `a` and `b`, we have $\sum_{d | ab} f(d) = (\sum_{d | a} f(d)) \cdot (\sum_{d | b} f(d))$. -/
 @[blueprint
@@ -74,7 +74,7 @@ theorem sum_divisors_mul_of_coprime {R : Type*} [CommRing R]
     {f : ArithmeticFunction R} (hf : f.IsMultiplicative)
     {a b : ℕ} (hab : Coprime a b) (ha : a ≠ 0) (hb : b ≠ 0) :
     ∑ d ∈ (a * b).divisors, f d = (∑ d ∈ a.divisors, f d) * (∑ d ∈ b.divisors, f d) := by
-  sorry
+  sorry -- UPSTREAMED TO MATHLIB #36495
 
 /-- If `g` is a multiplicative arithmetic function, then for any $n \neq 0$,
     $\sum_{d | n} \mu(d) \cdot g(d) = \prod_{p | n} (1 - g(p))$. -/
@@ -257,7 +257,13 @@ theorem d_isMultiplicative (k : ℕ) : (d k).IsMultiplicative := by
   induction k with
   | zero => rw [d_zero]; exact isMultiplicative_one
   | succ k ih =>
-    sorry -- follows from IsMultiplicative.pow and isMultiplicative_zeta
+      rw [d_succ]
+      exact ih.mul isMultiplicative_zeta
+
+/- MOVE HELPER LEMMA ESLEWHERE?? Not used in this file, but seems potentially useful? -/
+theorem Nat.sum_divisorsAntidiagonal_prime_pow {α : Type u_1} [AddCommMonoid α] [HMul α α α] {k p : ℕ} {f : ℕ × ℕ → α} (h : Nat.Prime p) :
+∑ x ∈ (p ^ k).divisorsAntidiagonal, f x = ∑ n ∈ Finset.range (k + 1), f (p ^ n, p ^ (k - n)) := by
+  sorry
 
 /-- Explicit formula: `d k (p^a) = (a + k - 1).choose (k - 1) for prime p` for `k ≥ 1`. -/
 @[blueprint
@@ -268,7 +274,13 @@ theorem d_isMultiplicative (k : ℕ) : (d k).IsMultiplicative := by
   -/)]
 theorem d_apply_prime_pow {k : ℕ} (hk : 0 < k) {p : ℕ} (hp : p.Prime) (a : ℕ) :
     d k (p ^ a) = (a + k - 1).choose (k - 1) := by
-  sorry
+  obtain ⟨k', rfl⟩ := exists_eq_succ_of_ne_zero (Nat.ne_of_gt hk)
+  induction k' generalizing a with
+  | zero => simp [d_one, hp.ne_zero]
+  | succ k' ih =>
+      rw [d_succ, mul_zeta_apply, sum_divisors_prime_pow hp]
+      simp_rw [fun i ↦ ih i (succ_pos _)]
+      simpa [add_assoc, add_left_comm, add_comm] using sum_range_add_choose a k'
 
 /-- (1.25) in Iwaniec-Kowalski: a formula for `d_k` for all `n`.-/
 @[blueprint
@@ -291,7 +303,10 @@ theorem d_apply_prime_pow {k : ℕ} (hk : 0 < k) {p : ℕ} (hp : p.Prime) (a : �
   -/)]
 lemma d_apply {k n : ℕ} (hk : 0 < k) (hn : n ≠ 0) :
     d k n = ∏ p ∈ n.primeFactors, (n.factorization p + k - 1).choose (k - 1) := by
-  sorry
+  have hmult : (d k).IsMultiplicative := d_isMultiplicative k
+  rw [hmult.multiplicative_factorization (d k) hn, prod_factorization_eq_prod_primeFactors]
+  apply prod_congr rfl (fun p hp => ?_)
+  simpa using d_apply_prime_pow hk (prime_of_mem_primeFactors hp) _
 
 /-- Divisor power sum with exponents in an arbitrary semiring `R`. -/
 @[blueprint
@@ -380,9 +395,9 @@ lemma abscissa_powR_le (ν : ℂ) : LSeries.abscissaOfAbsConv (powR ν) ≤ ν.r
   -/)]
 theorem LSeries_sigma_eq_riemannZeta_mul (ν : ℂ) {s : ℂ} (hs : 1 < s.re) (hsν : 1 < (s - ν).re) :
     LSeries (↗(σᴿ ν)) s = riemannZeta s * riemannZeta (s - ν) := by
-  rw [ ← ArithmeticFunction.LSeries_zeta_eq_riemannZeta hs, ← LSeries_powR_eq ν hsν, sigmaR_eq_zeta_mul_powR];
+  rw [← ArithmeticFunction.LSeries_zeta_eq_riemannZeta hs, ← LSeries_powR_eq ν hsν, sigmaR_eq_zeta_mul_powR];
   apply ArithmeticFunction.LSeries_mul
-  · apply (ArithmeticFunction.abscissaOfAbsConv_zeta.trans_lt _ )
+  · apply (ArithmeticFunction.abscissaOfAbsConv_zeta.trans_lt _)
     exact_mod_cast hs
   · apply lt_of_le_of_lt (abscissa_powR_le ν)
     rw[Complex.sub_re] at hsν
