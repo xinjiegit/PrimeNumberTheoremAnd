@@ -653,8 +653,61 @@ theorem Phi_circ.poles (ν ε : ℝ) (_hν : ν > 0) (z : ℂ) :
   (proof := /-- This follows from the definition of $\Phi^{\pm,\circ}_\nu$ and the properties of the $\coth$ function. -/)
   (latexEnv := "lemma")
   (discussion := 1071)]
-theorem Phi_circ.residue (ν ε : ℝ) (hν : ν > 0) (n : ℤ) :
-    (nhdsWithin (n - I * ν / (2 * π)) {n - I * ν / (2 * π)}ᶜ).Tendsto (fun z ↦ (z - (n - I * ν / (2 * π))) * Phi_circ ν ε z) (nhds (I / (2 * π))) := by sorry
+theorem Phi_circ.residue (ν ε : ℝ) (_hν : ν > 0) (n : ℤ) :
+    (nhdsWithin (n - I * ν / (2 * π)) {n - I * ν / (2 * π)}ᶜ).Tendsto (fun z ↦ (z - (n - I * ν / (2 * π))) * Phi_circ ν ε z) (nhds (I / (2 * π))) := by
+  set z₀ : ℂ := n - I * ν / (2 * π)
+  set w : ℂ → ℂ := fun z ↦ -2 * π * I * z + ν
+  set s : ℂ → ℂ := fun z ↦ w z / 2
+  have h_s_z₀ : s z₀ = -n * π * I := by
+    dsimp [s, w, z₀]
+    field_simp [pi_ne_zero]
+    ring_nf
+    simp [I_sq]
+  have h_cosh_z₀ : Complex.cosh (s z₀) = (-1)^n := by
+    rw [h_s_z₀, show -n * π * I = -(n * π * I) by ring, Complex.cosh_neg, Complex.cosh_mul_I]
+    norm_cast
+    push_cast [Real.cos_int_mul_pi]
+    rfl
+  have h_sinh_z₀ : Complex.sinh (s z₀) = 0 := by
+    rw [h_s_z₀, show -n * π * I = -(n * π * I) by ring, Complex.sinh_neg,
+        Complex.sinh_mul_I, Complex.sin_int_mul_pi]
+    simp
+  have h_s_deriv : HasDerivAt s (-↑π * I) z₀ := by
+    dsimp [s, w]
+    have h := (((hasDerivAt_id z₀).const_mul (-2 * ↑π * I)).add
+                (hasDerivAt_const z₀ (↑ν : ℂ))).div_const 2
+    convert h using 1; simp only [mul_one, add_zero]; ring
+  have h_sinh_deriv : HasDerivAt (fun z ↦ Complex.sinh (s z)) (-↑π * I * Complex.cosh (s z₀)) z₀ := by
+    convert (Complex.hasDerivAt_sinh (s z₀)).comp z₀ h_s_deriv using 1; ring
+  have h_slope2 : Filter.Tendsto (fun z => Complex.sinh (s z) / (z - z₀)) (nhdsWithin z₀ {z₀}ᶜ) (nhds (-π * I * Complex.cosh (s z₀))) := by
+    have h_eq : slope (fun z => Complex.sinh (s z)) z₀ = fun z => Complex.sinh (s z) / (z - z₀) := by
+      ext z; simp [slope, h_sinh_z₀, div_eq_inv_mul]
+    have h_slope := h_sinh_deriv.tendsto_slope
+    rwa [h_eq] at h_slope
+  have h_lim_sinh : Filter.Tendsto (fun z ↦ (z - z₀) / Complex.sinh (s z)) (nhdsWithin z₀ {z₀}ᶜ) (nhds (-π * I * Complex.cosh (s z₀))⁻¹) := by
+    simpa [inv_div] using h_slope2.inv₀ (by
+      rw [h_cosh_z₀]
+      exact mul_ne_zero (by simp [pi_ne_zero, I_ne_zero]) (zpow_ne_zero n (by norm_num)))
+  have h_lim_eps : Filter.Tendsto (fun z ↦ (1 / 2 : ℂ) * ε * (z - z₀)) (nhdsWithin z₀ {z₀}ᶜ) (nhds 0) := by
+    have h : Filter.Tendsto (fun z => z - z₀) (nhds z₀) (nhds (z₀ - z₀)) :=
+      Filter.Tendsto.sub Filter.tendsto_id tendsto_const_nhds
+    rw [sub_self] at h
+    have h2 := Filter.Tendsto.const_mul ((1 / 2 : ℂ) * ε) h
+    rw [mul_zero] at h2
+    exact h2.mono_left nhdsWithin_le_nhds
+  have h_lim_cosh : Filter.Tendsto (fun z ↦ Complex.cosh (s z)) (nhdsWithin z₀ {z₀}ᶜ) (nhds (Complex.cosh (s z₀))) :=
+    (by dsimp [s, w]; fun_prop : Continuous (fun z ↦ Complex.cosh (s z))).continuousAt.tendsto.mono_left nhdsWithin_le_nhds
+  rw [show (I / (2 * π) : ℂ) = (1 / 2 : ℂ) * (-π * I * Complex.cosh (s z₀))⁻¹ * Complex.cosh (s z₀) + 0 by
+    rw [add_zero, mul_inv]
+    field_simp [show Complex.cosh (s z₀) ≠ 0 by rw [h_cosh_z₀]; exact zpow_ne_zero n (by norm_num),
+      show (-↑π * I : ℂ) ≠ 0 by simp [pi_ne_zero, I_ne_zero]]
+    ring_nf; simp]
+  refine Filter.Tendsto.congr (fun z => ?_) ((h_lim_sinh.const_mul (1 / 2 : ℂ)).mul h_lim_cosh |>.add h_lim_eps)
+  rw [Phi_circ, coth]
+  dsimp [s, w]
+  rw [Complex.tanh_eq_sinh_div_cosh]
+  simp [one_div]
+  ring
 
 @[blueprint
   "Phi-circ-poles-simple"
@@ -666,7 +719,32 @@ theorem Phi_circ.residue (ν ε : ℝ) (hν : ν > 0) (n : ℤ) :
   (latexEnv := "lemma")
   (discussion := 1070)]
 theorem Phi_circ.poles_simple (ν ε : ℝ) (hν : ν > 0) (z : ℂ) :
-    meromorphicOrderAt (Phi_circ ν ε) z = -1 ↔ ∃ n : ℤ, z = n - I * ν / (2 * π) := by sorry
+    meromorphicOrderAt (Phi_circ ν ε) z = -1 ↔ ∃ n : ℤ, z = n - I * ν / (2 * π) := by
+  constructor
+  · exact fun h ↦ (Phi_circ.poles ν ε hν z).mp (h ▸ by decide)
+  · rintro ⟨n, rfl⟩
+    set z₀ := (n : ℂ) - I * ν / (2 * π)
+    have hsub : MeromorphicAt (· - z₀ : ℂ → ℂ) z₀ := by fun_prop
+    have hf : MeromorphicAt (Phi_circ ν ε) z₀ := (Phi_circ.meromorphic ν ε).meromorphicAt
+    have heq : (fun z ↦ (z - z₀) * Phi_circ ν ε z) =ᶠ[nhdsWithin z₀ {z₀}ᶜ] ((· - z₀) * Phi_circ ν ε) :=
+      Filter.Eventually.of_forall fun _ ↦ rfl
+    have hL : (I : ℂ) / (2 * ↑π) ≠ 0 := by
+      apply div_ne_zero I_ne_zero
+      exact mul_ne_zero two_ne_zero (ofReal_ne_zero.mpr pi_ne_zero)
+    have hord₀ : meromorphicOrderAt ((· - z₀) * Phi_circ ν ε) z₀ = 0 :=
+      (tendsto_ne_zero_iff_meromorphicOrderAt_eq_zero (hsub.mul hf)).mp
+        ⟨_, hL, (Phi_circ.residue ν ε hν n).congr' heq⟩
+    have hord₁ : meromorphicOrderAt (· - z₀ : ℂ → ℂ) z₀ = (1 : ℤ) := by
+      rw [meromorphicOrderAt_eq_int_iff hsub]
+      exact ⟨1, analyticAt_const, one_ne_zero, by simp⟩
+    rw [meromorphicOrderAt_mul hsub hf, hord₁] at hord₀
+    obtain ⟨m, hm⟩ := WithTop.ne_top_iff_exists.mp
+      (by rintro h; simp [h] at hord₀ : meromorphicOrderAt (Phi_circ ν ε) z₀ ≠ ⊤)
+    rw [← hm] at hord₀ ⊢
+    have h1 : (↑(1 : ℤ) + ↑m : WithTop ℤ) = ↑(1 + m : ℤ) := by push_cast; ring_nf
+    rw [h1] at hord₀
+    have : 1 + m = 0 := by exact_mod_cast hord₀
+    change (↑m : WithTop ℤ) = ↑(-1 : ℤ); congr 1; omega
 
 @[blueprint
   "B-def"
@@ -821,7 +899,48 @@ theorem Phi_star.poles (ν ε : ℝ) (hν : ν > 0) (z : ℂ) :
   (discussion := 1073)]
 theorem Phi_star.residue (ν ε : ℝ) (hν : ν > 0) (n : ℤ) (hn : n ≠ 0) :
     (nhdsWithin (n - I * ν / (2 * π)) {n - I * ν / (2 * π)}ᶜ).Tendsto
-      (fun z ↦ (z - (n - I * ν / (2 * π))) * Phi_star ν ε z) (nhds (-I * n / (2 * π))) := by sorry
+      (fun z ↦ (z - (n - I * ν / (2 * π))) * Phi_star ν ε z) (nhds (-I * n / (2 * π))) := by
+  set z₀ : ℂ := n - I * ν / (2 * π)
+  set w : ℂ → ℂ := fun z ↦ -2 * π * I * z + ν
+  have hw_z₀ : w z₀ = -2 * π * I * n := by
+    dsimp [w, z₀]
+    field_simp [pi_ne_zero]
+    ring_nf
+    simp [I_sq]
+  have h_circ_res := Phi_circ.residue ν ε hν n
+  have h_w_lim : Filter.Tendsto w (nhdsWithin z₀ {z₀}ᶜ) (nhds (w z₀)) := by
+    apply ContinuousAt.continuousWithinAt
+    unfold w
+    fun_prop
+  have h_const_lim : Filter.Tendsto (fun z ↦ (z - z₀) * B ε ν) (nhdsWithin z₀ {z₀}ᶜ) (nhds 0) := by
+    have h : Filter.Tendsto (fun z => z - z₀) (nhds z₀) (nhds (z₀ - z₀)) :=
+      Filter.Tendsto.sub Filter.tendsto_id tendsto_const_nhds
+    rw [sub_self] at h
+    have h2 := Filter.Tendsto.mul_const (B ε ν) h
+    rw [zero_mul] at h2
+    exact h2.mono_left nhdsWithin_le_nhds
+  rw [show (-I * n / (2 * π) : ℂ) = (1 / (2 * π * I)) * (w z₀ * (I / (2 * π)) - 0) by
+    rw [hw_z₀]
+    have hpi : (π : ℂ) ≠ 0 := by simp [pi_ne_zero]
+    field_simp [hpi, I_ne_zero]
+    ring_nf]
+  refine Filter.Tendsto.congr' ?_ (((h_w_lim.mul h_circ_res).sub h_const_lim).const_mul (1 / (2 * π * I)))
+  have hw_cont : ContinuousAt w z₀ := by fun_prop
+  have hw_z₀_ne_zero_local : w z₀ ≠ 0 := by
+    rw [hw_z₀]
+    have hpi : (π : ℂ) ≠ 0 := by simp [pi_ne_zero]
+    intro hc
+    apply hn
+    apply_fun (fun x => x / (-2 * π * I)) at hc
+    simpa [hpi, I_ne_zero] using hc
+  filter_upwards [nhdsWithin_le_nhds (hw_cont.eventually_ne hw_z₀_ne_zero_local)] with z hz
+  have hB : B ε (w z) = w z * (coth (w z / 2) + ε) / 2 := by
+    unfold B; split_ifs with h_branch
+    · exact False.elim (hz h_branch)
+    · rfl
+  dsimp only [Phi_star, Phi_circ]
+  rw [hB]
+  ring
 
 @[blueprint
   "Phi-star-poles-simple"
