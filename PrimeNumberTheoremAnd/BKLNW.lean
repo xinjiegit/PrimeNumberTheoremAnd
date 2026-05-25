@@ -189,10 +189,9 @@ theorem thm_1a_table {b M m : ℝ} (h_table : (b, M, m) ∈ table_14) {x : ℝ} 
   (discussion := 791)]
 theorem cor_2_1 : ∀ x > 0, θ x ≤ (1 + (1.93378e-8*BKLNW_app.table_8_margin)) * x := by
   intro x hx_pos
-  by_cases hx : x ≤ 1e19
+  by_cases! hx : x ≤ 1e19
   · exact le_trans (le_of_lt (buthe_eq_1_7 x ⟨hx_pos, hx⟩)) (le_mul_of_one_le_left hx_pos.le (by norm_num))
-  · push_neg at hx
-    have h_exp20 : 1e19 ≥ exp 20 := by grw [← exp_one_rpow 20, Real.exp_one_lt_d9]; norm_num only
+  · have h_exp20 : 1e19 ≥ exp 20 := by grw [← exp_one_rpow 20, Real.exp_one_lt_d9]; norm_num only
     suffices Pre_inputs.default.ε (log 1e19) ≤ 1.93378e-8 * BKLNW_app.table_8_margin by
       grw [(thm_1a h_exp20 h_exp20 hx.le hx.le).2, this, mul_comm]
     unfold Pre_inputs.default
@@ -255,7 +254,7 @@ theorem prop_3_sub_1 (I : Inputs) {x₀ x : ℝ} (hx₀ : x₀ ≥ 1)
   rw [div_le_iff₀ hx13_pos]
   have h_step1 : ψ x - θ x - θ (x ^ ((1:ℝ)/2)) ≤
       ∑ n ∈ Icc 3 ⌊log x / log 2⌋₊, θ (x ^ (1 / (n : ℝ))) := by
-    by_cases hx2 : x < 2
+    by_cases! hx2 : x < 2
     · have hpsi : ψ x = 0 := psi_eq_zero_of_lt_two hx2
       have htheta : θ x = 0 := theta_eq_zero_of_lt_two hx2
       have htheta2 : θ (x ^ ((1:ℝ)/2)) = 0 := theta_eq_zero_of_lt_two (by
@@ -264,16 +263,14 @@ theorem prop_3_sub_1 (I : Inputs) {x₀ x : ℝ} (hx₀ : x₀ ≥ 1)
           _ = 2 := rpow_one 2)
       simp only [hpsi, htheta, htheta2, sub_zero]
       exact Finset.sum_nonneg fun i _ ↦ Chebyshev.theta_nonneg _
-    · push_neg at hx2
-      have hpsi_eq := psi_eq_theta_add_sum_theta hx2
-      by_cases hN2 : 2 ≤ ⌊log x / log 2⌋₊
+    · have hpsi_eq := psi_eq_theta_add_sum_theta hx2
+      by_cases! hN2 : 2 ≤ ⌊log x / log 2⌋₊
       · have hsplit : ∑ n ∈ Icc 2 ⌊log x / log 2⌋₊, θ (x ^ (1 / (n : ℝ))) =
             θ (x ^ ((1:ℝ)/2)) + ∑ n ∈ Icc 3 ⌊log x / log 2⌋₊, θ (x ^ (1 / (n : ℝ))) := by
           rw [← add_sum_Ioc_eq_sum_Icc hN2, ← Icc_add_one_left_eq_Ioc]
           push_cast; ring_nf
         linarith
-      · push_neg at hN2
-        have hN_le : ⌊log x / log 2⌋₊ ≤ 1 := by omega
+      · have hN_le : ⌊log x / log 2⌋₊ ≤ 1 := by omega
         have h_empty2 : Icc 2 ⌊log x / log 2⌋₊ = ∅ := by
           simp only [Finset.Icc_eq_empty_iff]; omega
         have h_empty3 : Icc 3 ⌊log x / log 2⌋₊ = ∅ := by
@@ -504,7 +501,7 @@ theorem prop_3_sub_7 (x₀ : ℝ) (hx₀ : x₀ ≥ 2 ^ 9) (x : ℝ)
       _ < 2^((n:ℝ)+1) := rpow_lt_rpow_of_exponent_lt one_lt_two (by exact_mod_cast this)
       _ = 2^(n+1) := by rw [← rpow_natCast]; norm_cast
   have hn_ge : n ≥ 4 := by
-    by_contra hcon; push_neg at hcon
+    by_contra! hcon
     have : (2 : ℝ) ^ (n + 1) ≤ 2^9 := pow_le_pow_right₀ one_le_two <| by omega
     linarith [hx₀, hx₀_lt]
   rcases hx_lo.eq_or_lt with rfl | hlt
@@ -810,8 +807,13 @@ lemma g_decreasing_interval (A C : ℝ) (hA : 0 < A) (hC : 0 < C) (u v : ℝ) (h
       -- Let $f(t) = t^A e^{-C\sqrt{t}}$. The derivative is $f'(t) = t^{A-1} e^{-C\sqrt{t}} (A - \frac{C}{2}\sqrt{t})$.
       set f := fun t : ℝ => t ^ A * Real.exp (-C * Real.sqrt t)
       have h_deriv : ∀ t > 0, deriv f t = t ^ (A - 1) * Real.exp (-C * Real.sqrt t) * (A - C / 2 * Real.sqrt t) := by
-        intro t ht; norm_num [ f, ht.ne', Real.sqrt_eq_rpow, Real.rpow_sub ht ] ; ring_nf;
-        rw [ show ( -1 / 2 : ℝ ) = ( 1 / 2 : ℝ ) - 1 by norm_num, Real.rpow_sub ht ] ; norm_num ; ring;
+        intro t ht; norm_num [ f, ht.ne', Real.sqrt_eq_rpow, Real.rpow_sub ht ]
+        rw [deriv_fun_mul, Real.deriv_rpow_const, _root_.deriv_exp]
+        · simp only [deriv.fun_neg', deriv_const_mul_field',
+          Real.deriv_rpow_const, mul_neg]
+          rw [rpow_sub_one (by linarith), rpow_sub_one (by linarith)]
+          ring
+        all_goals fun_prop (disch := linarith)
       -- Since $4A^2/C^2 \le u \le v$, we have $f'(t) \le 0$ for $t \ge 4A^2/C^2$.
       have h_deriv_nonpos : ∀ t > 0, 4 * A ^ 2 / C ^ 2 ≤ t → deriv f t ≤ 0 := by
         intro t ht ht'; rw [ h_deriv t ht ] ; exact mul_nonpos_of_nonneg_of_nonpos ( mul_nonneg ( Real.rpow_nonneg ht.le _ ) ( Real.exp_nonneg _ ) ) ( sub_nonpos_of_le <| by rw [ div_le_iff₀ <| by positivity ] at *; nlinarith [ show 0 ≤ Real.sqrt t * C by positivity, Real.mul_self_sqrt ht.le ] ) ;
@@ -1766,11 +1768,21 @@ theorem bklnw_corollary_9_1 (k : ℕ) (v c C b : ℝ) (hvcc : (100, v, c, C) ∈
   "bklnw-table-12-verification"
   (title := "BKLNW Table 12 verification")
   (statement := /--  Verification of the entries of Table 12. -/)
-  (proof := /-- TODO: Implement a margin and verify the entries of Table 12. Any lengthy numerical calculations should be moved to `BKLNW\_tables.lean` -/)
+  (proof := /-- For each row, the constant $C_{b,k}$ of Corollary \ref{bklnw-corollary-9-1}
+is at most the tabulated entry.  This is a finite numerical check, carried out by
+`table\_12\_check` in `BKLNW\_tables.lean` via interval arithmetic, using
+$C_{b,k} = b^k \cdot S$ with $S$ independent of $k$. -/)
   (latexEnv := "proposition")
   (discussion := 1263)]
 theorem bklnw_table_12_verification (b c C M : ℝ) (Cb : ℕ → ℝ) (h : (b, Cb 1, Cb 2, Cb 3, Cb 4, Cb 5, c, C, M) ∈ BKLNW.table_12) : ∀ k ∈ Finset.Icc 1 5, C_bk b c C RS_prime.c₀ k ≤ Cb k := by
-  sorry
+  obtain ⟨h1, h2, h3, h4, h5⟩ :=
+    BKLNW.table_12_check b (Cb 1) (Cb 2) (Cb 3) (Cb 4) (Cb 5) c C M h
+  have hC : ∀ j : ℕ, C_bk b c C RS_prime.c₀ j = b ^ j * BKLNW.C_bk_S b c C := by
+    intro j; simp only [C_bk, BKLNW.C_bk_S]
+  intro k hk
+  have hk' : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 := by
+    simp only [Finset.mem_Icc] at hk; omega
+  rcases hk' with rfl | rfl | rfl | rfl | rfl <;> rw [hC] <;> assumption
 
 private lemma mem_table_from_buthe_and_bounds_of_mem_table_12 (b c C M : ℝ) (Cb : ℕ → ℝ)
     (h : (b, Cb 1, Cb 2, Cb 3, Cb 4, Cb 5, c, C, M) ∈ BKLNW.table_12) :
@@ -2120,6 +2132,18 @@ noncomputable def Table_15 : List (ℝ × (Fin 5 → ℝ)) := [
 
 /- [FIX]: This fixes a typo in the original paper https://arxiv.org/pdf/2002.11068. -/
 @[blueprint
+  "bklnw-thm-1b-table"
+  (title := "BKLNW Theorem 1b, table form")
+  (statement := /--  See \cite[Table 15]{BKLNW} for values of $m_k$ and $M_k$, for $k \in \{1,2,3,4,5\}$.
+  The first column of the table is the logarithmic threshold \(b = \log X_0\), so a row with first
+  component \(b\) applies for \(x \geq \exp b\).
+  -/)
+  (latexEnv := "theorem")]
+theorem thm_1b_table {b : ℝ} (hb : b > 0) {M : Fin 5 → ℝ} (h : (b, M) ∈ Table_15) (k : Fin 5) {x : ℝ} (hx : x ≥ exp b) :
+  x * (1 - M k / (log x)^(k.val + 1)) ≤ θ x ∧ θ x ≤ x * (1 + M k / (log x)^(k.val + 1)) := by sorry
+
+/- [FIX]: This fixes a typo in the original paper https://arxiv.org/pdf/2002.11068. -/
+@[blueprint
   "bklnw-thm-1b"
   (title := "Theorem 1b")
   (statement := /--  Let $k$ be an integer with $1 \leq k \leq 5$. For any fixed $X_0 > 1$, there exists $m_k > 0$ such that, for all $x \geq X_0$
@@ -2132,22 +2156,75 @@ noncomputable def Table_15 : List (ℝ × (Fin 5 → ℝ)) := [
   $$ M_0 = \varepsilon(\log X_1). $$
   -/)
   (latexEnv := "theorem")]
-theorem thm_1b (k : ℕ) (hk : k ≤ 5) {X₀ X₁ x : ℝ} (hX₀ : X₀ > 1) (hX₁ : X₁ > 1) (hx₀ : x ≥ X₀)
-    (hx₁ : x ≥ X₁) : ∃ mₖ Mₖ, ∀ x, x ≥ X₀ ∧ x ≥ X₁ → (x * (1 - mₖ / (log x)^k) ≤ θ x) ∧ (θ x ≤ x * (1 + Mₖ / (log x)^k)) := by
-  sorry
-
-/- [FIX]: This fixes a typo in the original paper https://arxiv.org/pdf/2002.11068. -/
-@[blueprint
-  "bklnw-thm-1b-table"
-  (title := "BKLNW Theorem 1b, table form")
-  (statement := /--  See \cite[Table 15]{BKLNW} for values of $m_k$ and $M_k$, for $k \in \{1,2,3,4,5\}$.
-  The first column of the table is the logarithmic threshold \(b = \log X_0\), so a row with first
-  component \(b\) applies for \(x \geq \exp b\).
-  -/)
-  (latexEnv := "theorem")]
-theorem thm_1b_table {b : ℝ} (hb : b > 0) {M : Fin 5 → ℝ} (h : (b, M) ∈ Table_15) (k : Fin 5) {x : ℝ} (hx : x ≥ exp b) :
-  x * (1 - M k / (log x)^(k.val + 1)) ≤ θ x ∧ θ x ≤ x * (1 + M k / (log x)^(k.val + 1)) :=
-  by sorry
+theorem thm_1b (k : ℕ) (hk : k ≤ 5) {X₀ X₁ : ℝ} (hX₀ : X₀ > 1) :
+  ∃ mₖ Mₖ, ∀ x, x ≥ X₀ ∧ x ≥ X₁ → (x * (1 - mₖ / (log x)^k) ≤ θ x) ∧ (θ x ≤ x * (1 + Mₖ / (log x)^k)) := by
+  have h_ne : Table_15 ≠ [] := by decide
+  let row := Table_15.getLast h_ne
+  let b : ℝ := row.1
+  let M := row.2
+  have hM : (b, M) ∈ Table_15 := List.getLast_mem h_ne
+  by_cases hk0 : k = 0
+  · subst k
+    let α := Inputs.default.α
+    use 1, α
+    intro x hx
+    have hx_pos : x > 0 := by linarith [hx.1, hX₀]
+    constructor
+    · rw [show 1 - 1 / (log x)^0 = 0 by simp, mul_zero]
+      exact Chebyshev.theta_nonneg x
+    · rw [show 1 + α / (log x)^0 = 1 + α by simp, mul_comm]
+      exact Inputs.default.hα x hx_pos
+  · have hk_fin : k - 1 < 5 := by omega
+    let k_fin : Fin 5 := ⟨k - 1, hk_fin⟩
+    let C_table := M k_fin
+    let α := Inputs.default.α
+    let mk := max C_table (b^k)
+    let Mk := max C_table (α * b^k)
+    use mk, Mk
+    intro x hx
+    have hx_pos : x > 0 := by linarith [hx.1, hX₀]
+    have hlog_pos : log x > 0 := Real.log_pos (by linarith [hx.1, hX₀])
+    have h_log_k_pos : 0 < (log x)^k := by positivity
+    by_cases hxb : x ≥ exp b
+    · have hk_eq : k_fin.val + 1 = k := by dsimp [k_fin]; omega
+      have h_table_bound := thm_1b_table (by dsimp [b, row, Table_15]; norm_num) hM k_fin hxb
+      rw [hk_eq] at h_table_bound
+      constructor
+      · have h_le : x * (1 - mk / (log x)^k) ≤ x * (1 - C_table / (log x)^k) := by
+          gcongr; exact le_max_left _ _
+        exact h_le.trans h_table_bound.1
+      · have h_le : x * (1 + C_table / (log x)^k) ≤ x * (1 + Mk / (log x)^k) := by
+          gcongr; exact le_max_left _ _
+        exact h_table_bound.2.trans h_le
+    · have h_lt : x < exp b := not_le.mp hxb
+      have h_log_lt : log x < b := by
+        rwa [← log_lt_log_iff hx_pos (by positivity), Real.log_exp b] at h_lt
+      have h_log_k_le : (log x)^k ≤ b^k := by
+        have h_log_nonneg : 0 ≤ log x := by positivity
+        exact pow_le_pow_left₀ h_log_nonneg h_log_lt.le k
+      constructor
+      · have h_bk_le : b^k ≤ mk := le_max_right _ _
+        have h_log_k_le_mk : (log x)^k ≤ mk := h_log_k_le.trans h_bk_le
+        have h_le_zero : x * (1 - mk / (log x)^k) ≤ 0 := by
+          have h_div : 1 ≤ mk / (log x)^k := by
+            rw [one_le_div h_log_k_pos]
+            exact h_log_k_le_mk
+          have h_sub : 1 - mk / (log x)^k ≤ 0 := by linarith
+          nlinarith [hx_pos, h_sub]
+        exact h_le_zero.trans (Chebyshev.theta_nonneg x)
+      · have h_α_bk_le : α * b^k ≤ Mk := le_max_right _ _
+        have hα_nonneg : 0 ≤ α := by dsimp [α, Inputs.default]; positivity
+        have h_le_α : α ≤ Mk / (log x)^k := by
+          have h2 : α ≤ α * b^k / (log x)^k := by
+            rw [mul_div_assoc]
+            simpa using mul_le_mul_of_nonneg_left ((one_le_div h_log_k_pos).mpr h_log_k_le) hα_nonneg
+          have h1 : α * b^k / (log x)^k ≤ Mk / (log x)^k := by gcongr
+          exact h2.trans h1
+        have h_bound := cor_2_1 x hx_pos
+        rw [mul_comm] at h_bound
+        have h_sub_bound : 1 + α ≤ 1 + Mk / (log x)^k := by linarith
+        have h_final : x * (1 + α) ≤ x * (1 + Mk / (log x)^k) := by gcongr
+        exact h_bound.trans h_final
 
 
 blueprint_comment /--

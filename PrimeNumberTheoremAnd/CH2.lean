@@ -170,7 +170,11 @@ theorem prop_2_3_1 {a : ℕ → ℂ} {T β : ℝ} (hT : 0 < T) (_hβ : 1 < β)
         (by exact_mod_cast hx.ne')]; simp
     simp_rw [show ∀ t : ℝ, φ (t / T) * G (sig + t * I) * x ^ (1 + ↑t * I) =
         (x : ℂ) * (phiScaled t * G (sig + t * I) * x ^ (↑t * I)) from
-      fun t => by rw [hcpow]; simp only [phiScaled]; ring, integral_const_mul, hG_rewrite]; ring
+      fun t => by rw [hcpow]; simp only [phiScaled]; ring]
+    rw [show (∫ (t : ℝ), (x : ℂ) * (phiScaled t * G (sig + t * I) * x ^ (↑t * I))) =
+        (x : ℂ) * ∫ (t : ℝ), phiScaled t * G (sig + t * I) * x ^ (↑t * I) from
+      MeasureTheory.integral_const_mul _ _]
+    simp_rw [hG_rewrite]; ring
   have hPole_from_second :
       (x ^ (2 - sig) / (2 * π * T) : ℝ) * ∫ u in Set.Ici (-log x),
           Real.exp (-u * (sig - 1)) * 𝓕 phiScaled (u / (2 * π)) =
@@ -334,21 +338,26 @@ private lemma prop_2_3_fourier_integral_ici_eq
       convert (Measure.integral_comp_div g (2 * π)) using 1
       · congr 1; ext u; dsimp [g]; simp [Set.indicator_apply, Set.mem_Ici, le_div_iff₀ h2pi]
       · dsimp [g]; simp [abs_of_pos h2pi]
+        show _ = ((2 * π : ℝ) : ℂ) * _
+        push_cast; ring
     _ = (2 * π : ℂ) * ∫ v in Set.Ici (-log x / (2 * π)), (T : ℂ) * 𝓕 φ (T * v) := by
       congr 1; apply integral_congr_ae; filter_upwards with v
       rw [fourier_scale_div_noscalar φ T v hT]
     _ = (2 * π : ℂ) * ∫ y in Set.Ici (-T * log x / (2 * π)), 𝓕 φ y := by
-      rw [integral_const_mul]
+      rw [show (∫ v in Set.Ici (-log x / (2 * π)), (T : ℂ) * 𝓕 φ (T * v)) =
+          (T : ℂ) * ∫ v in Set.Ici (-log x / (2 * π)), 𝓕 φ (T * v) from
+        MeasureTheory.integral_const_mul _ _]
       erw [Measure.setIntegral_comp_smul volume (𝓕 φ) (Set.Ici (-log x / (2 * π))) hT.ne']
       rw [Module.finrank_self, pow_one, abs_of_pos (inv_pos.mpr hT), LinearOrderedField.smul_Ici hT]
       simp only [push_cast, neg_mul]
       field_simp [hT.ne', Real.pi_pos.ne']
-      rw [Algebra.smul_def]; push_cast; field_simp [hT.ne']; rfl
+      show (T : ℂ) * (((1 / T : ℝ) : ℂ) * _) = _
+      push_cast; field_simp [hT.ne']
     _ = (2 * π : ℂ) * ((∫ y, 𝓕 φ y) - ∫ y in Set.Iic (-T * log x / (2 * π)), 𝓕 φ y) := by
       congr 1
       rw [← MeasureTheory.setIntegral_univ, MeasureTheory.setIntegral_univ]
       rw [eq_sub_iff_add_eq, add_comm]
-      rw [← MeasureTheory.integral_union_ae]
+      rw [← MeasureTheory.setIntegral_union₀]
       · rw [Set.Iic_union_Ici, MeasureTheory.setIntegral_univ]
       · rw [MeasureTheory.AEDisjoint, Set.inter_comm, Set.Ici_inter_Iic, Set.Icc_self, MeasureTheory.measure_singleton]
       · exact measurableSet_Ici.nullMeasurableSet
@@ -1009,7 +1018,7 @@ private lemma summable_I'_residual {a : ℕ → ℝ} (ha_pos : ∀ n, a n ≥ 0)
     {x : ℝ} (hx : 1 ≤ x) :
     Summable (fun (n : ℕ+) ↦ a n * (x / n) * I' ((2 * π * (σ - 1)) / T) ((T / (2 * π)) * log (n / x))) := by
   by_cases hσ_lt : σ < 1
-  · apply summable_of_finite_support
+  · apply summable_of_hasFiniteSupport
     have h_support : Function.support (fun (n : ℕ+) ↦ a n * (x / n) * I' ((2 * π * (σ - 1)) / T) ((T / (2 * π)) * log (n / x))) ⊆ Set.Iic (⟨⌊x⌋₊, Nat.floor_pos.mpr hx⟩ : ℕ+) := by
       intro n hn
       rw [Function.mem_support] at hn
@@ -1881,10 +1890,12 @@ lemma Complex.contDiff_normSq {n : ℕ∞} : ContDiff ℝ n (normSq : ℂ → �
   change ContDiff ℝ n (fun z : ℂ => z.re * z.re + z.im * z.im)
   exact (hre.mul hre).add (him.mul him)
 
+set_option backward.isDefEq.respectTransparency false in
 @[fun_prop]
 lemma Complex.contDiff_sinh_real {n : ℕ∞} : ContDiff ℝ n (Complex.sinh : ℂ → ℂ) :=
   Complex.contDiff_sinh.restrict_scalars ℝ
 
+set_option backward.isDefEq.respectTransparency false in
 @[fun_prop]
 lemma Complex.contDiff_cosh_real {n : ℕ∞} : ContDiff ℝ n (Complex.cosh : ℂ → ℂ) :=
   Complex.contDiff_cosh.restrict_scalars ℝ
@@ -1911,6 +1922,7 @@ theorem Phi_star.contDiff_real (ν ε : ℝ) (hlam : ν ≠ 0) :
     simp_all only [not_true_eq_false]
   convert h_diff_B.sub contDiff_const |> fun h => h.div_const (2 * Real.pi * Complex.I) using 1
 
+set_option backward.isDefEq.respectTransparency false in
 theorem Phi_circ.contDiff_real (ν ε : ℝ) (hlam : ν ≠ 0) : ContDiff ℝ 2 (fun t : ℝ => Phi_circ ν ε (t : ℂ)) := by
   have h_diff : ContDiff ℝ 2 (fun t : ℝ => 1 / Complex.tanh ((-2 * Real.pi * Complex.I * t + ν) / 2)) := by
     simp only [Complex.tanh_eq_sinh_div_cosh]
@@ -2563,14 +2575,14 @@ theorem B_plus_mono : Monotone (fun t:ℝ ↦ (B 1 t).re) := by
     · aesop
     obtain ⟨ c, hc₁, hc₂ ⟩ := h_mean_val a b ha ‹_›
     have := h_deriv_pos c ( lt_trans ha.out hc₁.1 )
-    rw [ hc₂, ge_iff_le, le_div_iff₀ (by lia) ] at this
+    rw [ hc₂, ge_iff_le, le_div_iff₀ (by grind) ] at this
     linarith
   have f_mono_neg : MonotoneOn (fun t : ℝ ↦ t * Real.exp t / (Real.exp t - 1)) (Set.Iio 0) := by
     have h_deriv_nonneg : ∀ t : ℝ, t < 0 → 0 ≤ deriv (fun t => t * Real.exp t / (Real.exp t - 1)) t := by
       intro t ht; norm_num [ Real.differentiableAt_exp, ne_of_lt, ht, sub_ne_zero ];
       exact div_nonneg ( by nlinarith [ Real.exp_pos t, Real.exp_neg t, mul_inv_cancel₀ ( ne_of_gt ( Real.exp_pos t ) ), Real.add_one_le_exp t, Real.add_one_le_exp ( -t ) ] ) ( sq_nonneg _ );
     intros t ht u hu htu;
-    by_contra h_contra; push_neg at h_contra; (
+    by_contra! h_contra; (
     obtain ⟨c, hc⟩ : ∃ c ∈ Set.Ioo t u, deriv (fun t => t * Real.exp t / (Real.exp t - 1)) c = (u * Real.exp u / (Real.exp u - 1) - t * Real.exp t / (Real.exp t - 1)) / (u - t) := by
       apply_rules [ exists_deriv_eq_slope ]
       · exact htu.lt_of_ne ( by rintro rfl; linarith )
@@ -2663,14 +2675,12 @@ theorem B_minus_mono : Antitone (fun t:ℝ ↦ (B (-1) t).re) := by
       · subst hb0; simp only [ite_true, ha0, ite_false]
         exact div_exp_ge_one a (lt_of_le_of_ne (not_lt.mp (fun h => ha0 (by linarith))) ha0)
       · simp only [ha0, hb0, ite_false]
-        by_cases hpos : 0 < a
+        by_cases! hpos : 0 < a
         · exact mvt_anti a b (fun x hxa hxb => ne_of_gt (exp_sub_pos x (by linarith))) hlt
-        · push_neg at hpos
-          have ha_neg : a < 0 := lt_of_le_of_ne hpos ha0
-          by_cases hneg : b < 0
+        · have ha_neg : a < 0 := lt_of_le_of_ne hpos ha0
+          by_cases! hneg : b < 0
           · exact mvt_anti a b (fun x hxa hxb => ne_of_lt (exp_sub_neg x (by linarith))) hlt
-          · push_neg at hneg
-            have hb_pos : 0 < b := lt_of_le_of_ne hneg (Ne.symm hb0)
+          · have hb_pos : 0 < b := lt_of_le_of_ne hneg (Ne.symm hb0)
             linarith [div_exp_le_one b hb_pos, div_exp_ge_one a ha_neg]
   funext t; split
   · next h => subst h; unfold B; simp
@@ -2733,11 +2743,11 @@ theorem varphi_fourier_ident (ν ε : ℝ) (hlam : ν ≠ 0) (x : ℝ) :
       dsimp [FourierTransform.fourier, VectorFourier.fourierIntegral]
       apply MeasureTheory.integral_congr_ae
       filter_upwards [] with v
-      simp only [starRingEnd_apply, star_trivial, E, Real.fourierChar, AddChar.coe_mk,
-           Circle.smul_def, smul_eq_mul,
-           Circle.coe_exp]
+      simp only [E, Real.fourierChar, AddChar.coe_mk,
+           Circle.smul_def, smul_eq_mul, Circle.coe_exp, real_inner_eq_re_inner,
+           RCLike.inner_apply, conj_trivial, RCLike.re_to_real]
       push_cast
-      ring_nf
+      ring
     _ = ∫ t in Set.Icc (-1:ℝ) 1, ϕ_pm ν ε t * E (-t * x) := by
       apply (setIntegral_eq_integral_of_forall_compl_eq_zero ?_).symm
       intro t ht
@@ -2750,7 +2760,7 @@ theorem varphi_fourier_ident (ν ε : ℝ) (hlam : ν ≠ 0) (x : ℝ) :
       conv_lhs =>
         rw [show Set.Icc (-1 : ℝ) 1 = Set.Icc (-1) 0 ∪ Set.Icc 0 1 from
           (Set.Icc_union_Icc_eq_Icc (by norm_num) (by norm_num)).symm]
-      refine MeasureTheory.integral_union_ae ?_ nullMeasurableSet_Icc ?_ ?_
+      refine MeasureTheory.setIntegral_union₀ ?_ nullMeasurableSet_Icc ?_ ?_
       · have hcap : Set.Icc (-1 : ℝ) 0 ∩ Set.Icc 0 1 = {0} := by
           ext t; simp only [Set.mem_inter_iff, Set.mem_Icc, Set.mem_singleton_iff]
           constructor
@@ -3358,6 +3368,7 @@ private lemma two_sub_E_sq (x : ℝ) : (2 : ℂ) - E ↑x - E (-↑x) = 4 * (Rea
     ring_nf; linear_combination -4 * Complex.sin_sq_add_cos_sq (z * (1 / 2))]
   simp; ring_nf
 
+set_option backward.isDefEq.respectTransparency false in
 @[blueprint
   "shift-upwards-simplified"
   (title := "Simplified formula for upward contour shift")
@@ -3415,8 +3426,12 @@ theorem shift_upwards_simplified (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : x 
       filter_upwards [ae_restrict_mem measurableSet_Icc] with t ht
       rw [h_add t ht.1, hE_shift_pos]
       ring
-    rw [h1, h2]
-    rw [integral_neg, integral_const_mul, integral_const_mul]
+    rw [h1, h2, integral_neg]
+    set g : ℝ → ℂ := fun t => Phi_star ν ε (I * ↑t) * E (-(I * ↑t) * ↑x)
+    rw [show (∫ t in Set.Icc 0 T, E ↑x * g t) = E ↑x * ∫ t in Set.Icc 0 T, g t from
+      MeasureTheory.integral_const_mul _ _]
+    rw [show (∫ t in Set.Icc 0 T, E (-↑x) * g t) = E (-↑x) * ∫ t in Set.Icc 0 T, g t from
+      MeasureTheory.integral_const_mul _ _]
     ring
   have h_prefactor := two_sub_E_sq x
   have h_Phi_star_imag (t : ℝ) :
@@ -3431,10 +3446,12 @@ theorem shift_upwards_simplified (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : x 
           (B ε ↑(2 * π * t + ν) - B ε ↑ν) * ↑(Real.exp (2 * π * x * t)) := by
     simp_rw [h_Phi_star_imag, h_E_imag]
     set f : ℝ → ℂ := fun t ↦ (B ε ↑(2 * π * t + ν) - B ε ↑ν) * ↑(rexp (2 * π * x * t))
-    rw [← integral_const_mul I]
-    have : ((1 : ℂ) / (2 * ↑π)) * ∫ t in Set.Icc 0 T, f t = ∫ t in Set.Icc 0 T, ((1 : ℂ) / (2 * ↑π)) * f t := by
-      rw [integral_const_mul]
-    rw [this]
+    rw [show (I * ∫ t in Set.Icc 0 T, (B ε ↑(2 * π * t + ν) - B ε ↑ν) / (2 * ↑π * I) *
+            ↑(rexp (2 * π * x * t))) = ∫ t in Set.Icc 0 T, I * ((B ε ↑(2 * π * t + ν) -
+            B ε ↑ν) / (2 * ↑π * I) * ↑(rexp (2 * π * x * t))) from
+      (MeasureTheory.integral_const_mul _ _).symm]
+    rw [show ((1 : ℂ) / (2 * ↑π)) * ∫ t in Set.Icc 0 T, f t = ∫ t in Set.Icc 0 T,
+        ((1 : ℂ) / (2 * ↑π)) * f t from (MeasureTheory.integral_const_mul _ _).symm]
     congr 1; ext t
     field_simp [Complex.I_ne_zero, Real.pi_pos.ne.symm]
     unfold f; ring_nf
@@ -4186,7 +4203,7 @@ theorem first_contour_limit (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : x > 0) 
         ofReal_neg, neg_mul, VIntegral, ofReal_inv, ofReal_ofNat, smul_eq_mul, ofReal_div,
         ofReal_one]
       ring_nf
-      simp only [one_div, add_right_inj, sub_right_inj]
+      simp only [one_div, sub_right_inj]
       congr 1; ext t; congr; ring
     have h_reparam (T : ℝ) (σ : ℝ) (hT : 0 ≤ T) : (I * ∫ t in 0..-T, f (σ + I * t)) = - I * ∫ t in Set.Icc 0 T, f (σ - I * t) := by
       let g (t : ℝ) : ℂ := f (σ + I * t)
@@ -4241,7 +4258,7 @@ lemma second_contour_integrand_holomorphicOn (ν ε x : ℝ) (T : ℝ) (_hT : T 
       zero_mul, mul_zero, sub_zero] at h_re
     rw [Set.uIcc_of_le (by norm_num), Set.mem_Icc, h_z_re] at h_re
     exact hn (unique_int_in_Icc n 0 h_re (by norm_num) (by norm_num))
-  · dsimp [E]; fun_prop
+  · dsimp [E]; apply DifferentiableAt.differentiableWithinAt; fun_prop
 
 @[blueprint
   "second-contour-limit"
@@ -4344,7 +4361,7 @@ lemma third_contour_integrand_holomorphicOn (ν ε x : ℝ) (U : ℝ) (_hU : U �
       Complex.I_re, Complex.I_im, Complex.ofReal_re, Complex.ofReal_im] at h_re
     rw [h_z_re] at h_re
     exact hn (unique_int_in_Icc n 0 h_re (by norm_num) (by norm_num))
-  · dsimp [E]; fun_prop
+  · dsimp [E]; apply DifferentiableAt.differentiableWithinAt; fun_prop
 
 @[blueprint
   "third-contour-limit"
@@ -4416,6 +4433,7 @@ theorem third_contour_limit (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : x > 0) 
       _ = _ := by
         ring_nf
 
+set_option backward.isDefEq.respectTransparency false in
 @[blueprint
   "shift-downwards-simplified"
   (title := "Simplified formula for downward contour shift")
@@ -4481,8 +4499,12 @@ theorem shift_downwards_simplified (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : 
       filter_upwards [ae_restrict_mem measurableSet_Icc, Measure.ae_ne (volume.restrict (Set.Icc 0 T)) (ν / (2 * π))] with t ht ht_pole
       rw [h_add t ht_pole, hE_shift_pos]
       ring
-    rw [h1, h2]
-    rw [integral_neg, integral_const_mul, integral_const_mul]
+    rw [h1, h2, integral_neg]
+    set g : ℝ → ℂ := fun t => Phi_star ν ε (-I * ↑t) * E (-(-I * ↑t) * ↑x)
+    rw [show (∫ t in Set.Icc 0 T, E ↑x * g t) = E ↑x * ∫ t in Set.Icc 0 T, g t from
+      MeasureTheory.integral_const_mul _ _]
+    rw [show (∫ t in Set.Icc 0 T, E (-↑x) * g t) = E (-↑x) * ∫ t in Set.Icc 0 T, g t from
+      MeasureTheory.integral_const_mul _ _]
     ring
   have h_prefactor : (2 : ℂ) - E (-↑x) - E ↑x = 4 * (Real.sin (π * x)) ^ 2 := by
     linear_combination two_sub_E_sq x
@@ -4497,13 +4519,16 @@ theorem shift_downwards_simplified (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : 
         ∫ t in Set.Icc 0 T,
           (B ε ↑(ν - 2 * π * t) - B ε ↑ν) * ↑(Real.exp (-2 * π * x * t)) := by
     simp_rw [h_Phi_star_neg_imag, h_E_neg_imag]
-    rw [← integral_const_mul (-I)]
-    have : -((1 : ℂ) / (2 * ↑π)) * ∫ t in Set.Icc 0 T,
+    rw [show (-I * ∫ t in Set.Icc 0 T, (B ε ↑(ν - 2 * π * t) - B ε ↑ν) / (2 * ↑π * I) *
+            ↑(rexp (-2 * π * x * t))) = ∫ t in Set.Icc 0 T, -I * ((B ε ↑(ν - 2 * π * t) -
+            B ε ↑ν) / (2 * ↑π * I) * ↑(rexp (-2 * π * x * t))) from
+      (MeasureTheory.integral_const_mul _ _).symm]
+    rw [show -((1 : ℂ) / (2 * ↑π)) * ∫ t in Set.Icc 0 T,
         (B ε ↑(ν - 2 * π * t) - B ε ↑ν) * ↑(rexp (-2 * π * x * t))
       = ∫ t in Set.Icc 0 T, -((1 : ℂ) / (2 * ↑π)) *
-        ((B ε ↑(ν - 2 * π * t) - B ε ↑ν) * ↑(rexp (-2 * π * x * t))) := by
-      rw [integral_const_mul]
-    rw [this]; congr 1; ext t
+        ((B ε ↑(ν - 2 * π * t) - B ε ↑ν) * ↑(rexp (-2 * π * x * t))) from
+      (MeasureTheory.integral_const_mul _ _).symm]
+    congr 1; ext t
     field_simp [Complex.I_ne_zero, Real.pi_pos.ne.symm]
   have h_cov (T : ℝ) (hT : 0 ≤ T) :
       ∫ t in Set.Icc 0 T,
@@ -4594,6 +4619,7 @@ private lemma integral_neg_one_zero_eq_zero_one (f : ℝ → ℂ) :
   rw [intervalIntegral.integral_comp_neg]
   simp
 
+set_option backward.isDefEq.respectTransparency false in
 @[blueprint
   "fourier-real"
   (title := "Fourier transform of $\\varphi$ real")
@@ -4647,10 +4673,10 @@ private lemma integral_re_B_mul_exp_add (ν T ε u : ℝ) :
     apply Continuous.integrableOn_Icc
     apply Continuous.mul
     · apply Continuous.sub
-      · apply Continuous.congr (h := (B.continuous_ofReal ε).comp (continuous_add_left ν))
+      · apply Continuous.congr (h := (B.continuous_ofReal ε).comp (continuous_const_add ν))
         intro t; simp [Complex.ofReal_add]
       · exact continuous_const
-    · exact Complex.continuous_ofReal.comp (Real.continuous_exp.comp (continuous_mul_left u))
+    · exact Complex.continuous_ofReal.comp (Real.continuous_exp.comp (continuous_const_mul u))
   rw [← Complex.reCLM_apply, ← Complex.reCLM.integral_comp_comm hf_integ]
   apply MeasureTheory.integral_congr_ae
   filter_upwards with t
@@ -4667,7 +4693,7 @@ private lemma integral_re_B_mul_exp_sub (ν T ε u : ℝ) :
       · apply Continuous.congr (h := (B.continuous_ofReal ε).comp (continuous_sub_left ν))
         intro t; simp [Complex.ofReal_sub]
       · exact continuous_const
-    · exact Complex.continuous_ofReal.comp (Real.continuous_exp.comp (continuous_mul_left u))
+    · exact Complex.continuous_ofReal.comp (Real.continuous_exp.comp (continuous_const_mul u))
   rw [← Complex.reCLM_apply, ← Complex.reCLM.integral_comp_comm hf_integ]
   apply MeasureTheory.integral_congr_ae
   filter_upwards with t
@@ -4809,7 +4835,7 @@ theorem varphi_deriv_integ (ν ε : ℝ) (hlam : ν ≠ 0) : Integrable (deriv (
       have h_eq : ϕ_pm ν ε =ᶠ[nhds t] (fun _ ↦ (0 : ℂ)) := by
         filter_upwards [isClosed_Icc.isOpen_compl.mem_nhds ht] with x hx
         unfold ϕ_pm; exact if_neg hx
-      rw [h_eq.deriv_eq, deriv_const]) measurableSet_Icc.compl
+      exact (h_eq.deriv_eq.trans (deriv_const _ _)).symm) measurableSet_Icc.compl
 
 private lemma varphi_ftc_aux (ν ε : ℝ) (hlam : ν ≠ 0) {a b x y : ℝ}
     (hx : x ∈ Set.Icc a b) (hy : y ∈ Set.Icc a b)
@@ -4845,11 +4871,11 @@ lemma varphi_ftc_out (ν ε : ℝ) (hlam : ν ≠ 0) {x y : ℝ}
         simpa [ϕ_pm] using (ϕ_pm_zero_boundary ν ε hlam).2
     · rfl
   have hf_deriv (t : ℝ) (ht : t < -1 ∨ t > 1) : deriv f t = 0 := by
-    have h_eq : f =ᶠ[nhds t] 0 := by
+    have h_eq : f =ᶠ[nhds t] (fun _ ↦ (0 : ℂ)) := by
       filter_upwards [isClosed_Icc.isOpen_compl.mem_nhds (show t ∉ Set.Icc (-1) 1 from by
         intro h; simp only [Set.mem_Icc] at h; rcases ht with ht | ht <;> linarith)] with z hz
       unfold f ϕ_pm; exact if_neg hz
-    rw [h_eq.deriv_eq]; rw [show (0 : ℝ → ℂ) = fun _ ↦ 0 from rfl, deriv_const]
+    exact h_eq.deriv_eq.trans (deriv_const _ _)
   rw [hf_const (h.elim (fun h' ↦ Or.inl h'.2) (fun h' ↦ Or.inr h'.2)),
       hf_const (h.elim (fun h' ↦ Or.inl h'.1) (fun h' ↦ Or.inr h'.1)), sub_zero]
   apply intervalIntegral.integral_zero_ae
@@ -4942,7 +4968,7 @@ lemma ϕ_pm_deriv_zero_outside (ν ε : ℝ) {t : ℝ} (ht : t < -1 ∨ t > 1) :
     filter_upwards [isClosed_Icc.isOpen_compl.mem_nhds (show t ∉ Set.Icc (-1) 1 from by
       intro h; simp only [Set.mem_Icc] at h; rcases ht with ht | ht <;> linarith)] with x hx
     unfold ϕ_pm; exact if_neg hx
-  rw [h_eq.deriv_eq, deriv_const]
+  exact h_eq.deriv_eq.trans (deriv_const _ _)
 
 lemma ϕ_pm_deriv_Iic_finite (ν ε : ℝ) :
     eVariationOn (deriv (ϕ_pm ν ε)) (Set.Iic (-1 : ℝ)) ≠ ⊤ := by
@@ -5099,7 +5125,7 @@ private lemma eVariationOn_add_jump_greatest {α E : Type*} [LinearOrder α] [Ps
             have h_k : k = (k - 1) + 1 := (Nat.sub_add_cancel (Nat.pos_of_ne_zero hk0)).symm
             nth_rw 2 [h_k]
             rw [← Finset.sum_range_succ, ← h_k]
-            exact eVariationOn.sum_le f k hu us
+            exact eVariationOn.sum_le hu us
   · have h_in : ∀ i ≤ n, u i ∈ s \ {x} := fun i hi ↦
       ⟨us i, ((hu hi).trans_lt (lt_of_le_of_ne (hs.2 (us n)) hx)).ne⟩
     calc
@@ -5107,7 +5133,7 @@ private lemma eVariationOn_add_jump_greatest {α E : Type*} [LinearOrder α] [Ps
           = ∑ i ∈ Finset.range n, edist (f (u (i + 1))) (f (u i)) := by
         apply Finset.sum_congr rfl; intro i hi; have hi' := Finset.mem_range.mp hi
         rw [← heq (h_in i hi'.le), ← heq (h_in (i + 1) hi')]
-    _ ≤ eVariationOn f s := eVariationOn.sum_le f n hu us
+    _ ≤ eVariationOn f s := eVariationOn.sum_le hu us
     _ ≤ eVariationOn f s + edist (f' x) (f x) := le_self_add
 
 private lemma eVariationOn_add_jump_endpoint {α E : Type*} [LinearOrder α] [PseudoEMetricSpace E]
@@ -5239,6 +5265,7 @@ private lemma varphi_hat_integrable (ν ε : ℝ) (hlam : ν ≠ 0) :
   · filter_upwards with x
     refine (h_decay x).trans_eq ?_
     rw [div_eq_mul_inv, Real.norm_eq_abs, sq_abs]
+    rfl
 
 private lemma varphi_fourier_inversion_re (ν ε : ℝ) (hlam : ν ≠ 0)
     (hf_hat_int : Integrable (𝓕 (ϕ_pm ν ε))) :
@@ -5730,10 +5757,9 @@ private lemma HorizontalStrip.exists_norm_deriv_z_coth_z_le (c : ℝ) (hc_lt : c
   use max C 1
   constructor; · positivity
   intro z hz
-  by_cases h_case : |z.re| ≤ R
+  by_cases! h_case : |z.re| ≤ R
   · exact (hC_core z ⟨h_case, hz⟩).trans ((le_max_left C_core C_tail).trans (le_max_left _ _))
-  · push_neg at h_case
-    have hz_mem : z ∈ S_tail := hR_subset ⟨h_case.le, hz⟩
+  · have hz_mem : z ∈ S_tail := hR_subset ⟨h_case.le, hz⟩
     have h_norm := hC_tail _ (Set.mem_image_of_mem _ hz_mem)
     rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)] at h_norm
     exact h_norm.trans ((le_max_right C_core C_tail).trans (le_max_left _ _))
@@ -5780,6 +5806,7 @@ private lemma deriv_z_coth_z_le_one (w : ℂ) (hw : |w.im| ≤ π / 4) :
   · rw [abs_le] at hw; linarith
   · rw [abs_le] at hw; linarith
 
+set_option backward.isDefEq.respectTransparency false in
 @[blueprint
   "CH2-lemma-4-2a"
   (title := "CH2 Lemma 4.2(a)")
