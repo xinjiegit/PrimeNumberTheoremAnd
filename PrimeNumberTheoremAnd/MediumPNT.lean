@@ -69,7 +69,7 @@ theorem LogDerivativeDirichlet (s : ℂ) (hs : 1 < s.re) :
   · simp
   · have := ArithmeticFunction.LSeriesSummable_vonMangoldt hs
     dsimp [LSeriesSummable] at this
-    convert this; rename ℕ => n
+    convert! this; rename ℕ => n
     by_cases h : n = 0 <;> simp [LSeries.term, h]
 
 blueprint_comment /--
@@ -362,7 +362,7 @@ theorem SmoothedChebyshevDirichlet {SmoothingF : ℝ → ℝ}
       ?_ ?_ ?_ ?_
     · beta_reduce at this
       dsimp [mellinInv, VerticalIntegral] at this
-      convert this using 4
+      convert! this using 4
       · norm_cast
       · rw [mul_comm]
         norm_cast
@@ -1064,7 +1064,7 @@ theorem SmoothedChebyshevPull1_aux_integrable {SmoothingF : ℝ → ℝ} {ε : �
     intro t
     simp only [Complex.norm_mul, c]
     gcongr
-    · convert hC t using 1
+    · convert! hC t using 1
       simp
     · rw [Complex.norm_cpow_eq_rpow_re_of_nonneg]
       · simp
@@ -1243,7 +1243,7 @@ theorem SmoothedChebyshevPull1 {SmoothingF : ℝ → ℝ} {ε : ℝ} (ε_pos : 0
           rw [this]
           apply DifferentiableOn.neg
           apply holoOn.mono
-          apply diff_subset_diff_left
+          apply Set.sdiff_subset_sdiff_left
           apply reProdIm_subset_iff'.mpr
           left
           simp only [sub_re, ofReal_re, mul_re, I_re, mul_zero, ofReal_im, I_im, mul_one, sub_self,
@@ -1352,7 +1352,7 @@ theorem SmoothedChebyshevPull2_aux1 {T σ₁ : ℝ} (σ₁lt : σ₁ < 1)
   apply ContinuousOn.neg
   apply holoOn.continuousOn.comp (by fun_prop)
   intro t ht
-  simp only [mem_diff, mem_singleton_iff]
+  simp only [Set.mem_sdiff, mem_singleton_iff]
   constructor
   · apply mem_reProdIm.mpr
     simp only [add_re, ofReal_re, mul_re, I_re, mul_zero, ofReal_im, I_im, mul_one, sub_self,
@@ -1412,34 +1412,31 @@ theorem SmoothedChebyshevPull2 {SmoothingF : ℝ → ℝ} {ε : ℝ} (ε_pos : 0
       obtain ⟨hx_re, hx_im⟩ := hx
       -- the real part of x is in the correct interval
       have hzw_re : z.re < w.re := by
-        dsimp [z, w]
-        linarith
+        simpa [z, w] using σ₂_lt_σ₁
       have x_re_bounds : z.re ≤ x.re ∧ x.re ≤ w.re := by
         exact interval_membership x.re z.re w.re hx_re hzw_re
       have x_re_in_Icc : x.re ∈ Icc σ₂ 2 := by
         have ⟨h_left, h_right⟩ := x_re_bounds
         have h_left' : σ₂ ≤ x.re := by
-          dsimp [z] at h_left
-          linarith
+          simpa [z] using h_left
         have h_right' : x.re ≤ 2 := by
           apply le_trans h_right
-          dsimp [w]
-          linarith
+          have : w.re ≤ 2 := by
+            simp [w]
+            linarith
+          exact this
         exact ⟨h_left', h_right'⟩
       -- the imaginary part of x is in the correct interval
       have hzw_im : z.im < w.im := by
-        dsimp [z, w]
-        linarith
+        norm_num [z, w]
       have x_im_bounds : z.im ≤ x.im ∧ x.im ≤ w.im := by
         exact interval_membership x.im z.im w.im hx_im hzw_im
       have x_im_in_Icc : x.im ∈ Icc (-3) 3 := by
         have ⟨h_left, h_right⟩ := x_im_bounds
         have h_left' : -3 ≤ x.im := by
-          dsimp [z] at h_left
-          linarith
+          simpa [z] using h_left
         have h_right' : x.im ≤ 3 := by
-          dsimp [w] at h_right
-          linarith
+          simpa [w] using h_right
         exact ⟨h_left', h_right'⟩
       exact ⟨x_re_in_Icc, x_im_in_Icc⟩
     -- x is not in {1} by contradiction
@@ -1451,12 +1448,11 @@ theorem SmoothedChebyshevPull2 {SmoothingF : ℝ → ℝ} {ε : ℝ} (ε_pos : 0
         obtain ⟨hx_re, _⟩ := hx
         -- the real part of x is in the interval
         have hzw_re : z.re < w.re := by
-          dsimp [z, w]
-          linarith
+          simpa [z, w] using σ₂_lt_σ₁
         have x_re_bounds : z.re ≤ x.re ∧ x.re ≤ w.re := by
           exact interval_membership x.re z.re w.re hx_re hzw_re
         have x_re_upper' : x.re ≤ w.re := x_re_bounds.2
-        dsimp [w] at x_re_upper'
+        have hw_re : w.re = σ₁ := by simp [w]
         linarith
       -- by contracdiction
       have h_x_ne_one : x ≠ 1 := by
@@ -1641,7 +1637,7 @@ theorem ae_volume_of_contains_compl_singleton_zero
   -- So volume(sᶜ) = 0
   have h_compl_zero : volume sᶜ = 0 := by
     rw [h_zero_null] at h_compl_measure
-    exact le_antisymm h_compl_measure (zero_le _)
+    exact le_antisymm h_compl_measure (by positivity)
 
   -- A set is in ae.sets iff its complement has measure zero
   rwa [mem_ae_iff]
@@ -1682,7 +1678,7 @@ theorem integral_evaluation (x : ℝ) (T : ℝ) (T_large : 3 < T) :
           apply Set.ext
           intro x
           simp_all only [ne_eq, setOf_subset_setOf, not_false_eq_true, implies_true,
-            mem_setOf_eq, mem_diff, mem_univ, mem_singleton_iff, true_and]
+            mem_setOf_eq, Set.mem_sdiff, mem_univ, mem_singleton_iff, true_and]
 
         rw [U1] at U
         exact ae_volume_of_contains_compl_singleton_zero _ U
@@ -2530,7 +2526,7 @@ lemma log_pow_over_xsq_integral_bounded :
         have fun2 : (↑d + 1) * Real.log x ^ d / x =  (↑d + 1) * Real.log x ^ d * x⁻¹:= by
           exact rfl
         rw [fun2]
-        convert deriv2 using 1
+        convert! deriv2 using 1
         rw [Nat.add_sub_cancel,
           Nat.cast_add, Nat.cast_one]
 
@@ -2551,7 +2547,7 @@ lemma log_pow_over_xsq_integral_bounded :
         have fun2 : -(x ^ 2)⁻¹ = - 1 / x ^ 2 := by
           field_simp
         rw [fun2] at deriv1
-        convert HasDerivAt.neg deriv1 using 1
+        convert! HasDerivAt.neg deriv1 using 1
         · ext x
           rw [neg_eq_neg_one_mul]
           field_simp
@@ -3065,7 +3061,7 @@ lemma I4Bound {SmoothingF : ℝ → ℝ}
       apply h_logDeriv_holo.continuousOn.comp' (by fun_prop)
       unfold MapsTo
       intro x xInIcc
-      simp only [neg_le_self_iff, Nat.ofNat_nonneg, uIcc_of_le, mem_diff, mem_singleton_iff]
+      simp only [neg_le_self_iff, Nat.ofNat_nonneg, uIcc_of_le, Set.mem_sdiff, mem_singleton_iff]
       have : ¬↑σ₂ + ↑x * (1 - ↑σ₂) - 3 * I = 1 := by
         by_contra h
         rw[Complex.ext_iff, sub_re, add_re, sub_im, add_im] at h
@@ -3459,7 +3455,7 @@ lemma I5Bound {SmoothingF : ℝ → ℝ}
       Nat.ofNat_nonneg, uIcc_of_le]
     intro z hyp_z
     simp only [mem_reProdIm, mem_singleton_iff, mem_Icc] at hyp_z
-    simp only [mem_diff, mem_reProdIm, mem_Icc, mem_singleton_iff]
+    simp only [Set.mem_sdiff, mem_reProdIm, mem_Icc, mem_singleton_iff]
     constructor
     · constructor
       · rw [hyp_z.1]
@@ -3609,7 +3605,7 @@ lemma LogDerivZetaBoundedAndHolo : ∃ A C : ℝ, 0 < C ∧ A ∈ Ioc 0 (1 / 2) 
   · intro T hT
     apply (holo _ hT).mono
     intro s hs
-    simp only [mem_diff, mem_singleton_iff, mem_reProdIm] at hs ⊢
+    simp only [Set.mem_sdiff, mem_singleton_iff, mem_reProdIm] at hs ⊢
     refine ⟨?_, hs.2⟩
     refine ⟨?_, hs.1.2⟩
     refine ⟨?_, hs.1.1.2⟩
@@ -3732,7 +3728,7 @@ theorem MediumPNT : ∃ c > 0,
   have holo2 : HolomorphicOn (fun s ↦ ζ' s / ζ s) (uIcc σ₂ 2 ×ℂ uIcc (-3) 3 \ {1}) := by
     apply holo2'.mono
     intro s hs
-    simp only [neg_le_self_iff, Nat.ofNat_nonneg, uIcc_of_le, mem_diff, mem_reProdIm, mem_Icc,
+    simp only [neg_le_self_iff, Nat.ofNat_nonneg, uIcc_of_le, Set.mem_sdiff, mem_reProdIm, mem_Icc,
       mem_singleton_iff] at hs ⊢
     refine ⟨?_, hs.2⟩
     refine ⟨?_, hs.1.2⟩
@@ -4245,7 +4241,7 @@ theorem MediumPNT : ∃ c > 0,
                   + c₈ * X / (ε * T)
                   + c₉ * X * Real.log X / (ε * T)) := by
       gcongr
-      convert h_close using 1
+      convert! h_close using 1
       rw [← norm_neg]
       congr
       ring

@@ -107,7 +107,7 @@ theorem WeakPNT'' : ψ ~[atTop] (fun x ↦ x) := by
     simp_rw [Chebyshev.psi_eq_sum_Icc]
     apply IsEquivalent.trans (v := fun x ↦ (⌊x⌋₊:ℝ))
     · rw [isEquivalent_iff_tendsto_one]
-      · convert Tendsto.comp WeakPNT' tendsto_nat_floor_atTop
+      · convert! Tendsto.comp WeakPNT' tendsto_nat_floor_atTop
         infer_instance
       rw [eventually_iff]
       simp only [ne_eq, cast_eq_zero, floor_eq_zero, not_lt, mem_atTop_sets, ge_iff_le,
@@ -133,7 +133,7 @@ lemma isLittleO_sqrt_mul_log : (fun x : ℝ ↦ x.sqrt * x.log) =o[atTop] _root_
   have : (fun x : ℝ ↦ x.sqrt * x.log) =o[atTop] fun x ↦ x := by
     refine (isLittleO_mul_iff_isLittleO_div ?_).mpr ?_
     · filter_upwards [eventually_gt_atTop 0] with x hx; exact (sqrt_ne_zero hx.le).mpr hx.ne'
-    · convert isLittleO_log_rpow_atTop (by norm_num : (0 : ℝ) < 1 / 2) using 2 with x
+    · convert! isLittleO_log_rpow_atTop (by norm_num : (0 : ℝ) < 1 / 2) using 2 with x
       rw [div_sqrt, sqrt_eq_rpow]
   exact this
 
@@ -182,7 +182,7 @@ theorem chebyshev_asymptotic : θ ~[atTop] id := by
       rw [Pi.sub_apply, norm_eq_abs, norm_eq_abs, abs_of_nonneg (by bound : 0 ≤ 2 * √x * log x)]
       exact (abs_of_nonneg (sub_nonneg.mpr (Chebyshev.theta_le_psi x))).symm ▸
         Chebyshev.abs_psi_sub_theta_le_sqrt_mul_log (by linarith : 1 ≤ x)⟩
-  · simpa only [mul_assoc] using isLittleO_sqrt_mul_log.const_mul_left 2
+  · simpa only [mul_assoc] using! isLittleO_sqrt_mul_log.const_mul_left 2
 
 theorem chebyshev_asymptotic_finsum :
     (fun x ↦ ∑ᶠ (p : ℕ) (_ : p ≤ x) (_ : Nat.Prime p), log p) ~[atTop] fun x ↦ x := by
@@ -343,12 +343,11 @@ lemma integral_log_inv (a b : ℝ) (ha : 2 ≤ a) (hb : a ≤ b) :
       (fun x hx => by
         rw [Set.uIcc_eq_union, Set.Icc_eq_empty (lt_iff_not_ge |>.1 hb), Set.union_empty] at hx
         obtain ⟨hx1, _⟩ := hx
-        simp only
         rw [show (-1 / (x * log x ^ 2)) = (-1 / log x ^ 2) * (x⁻¹) by
           rw [mul_comm x]; field_simp]
         apply HasDerivAt.comp
           (h := fun t => log t) (h₂ := fun t => t⁻¹) (x := x)
-        · simpa using HasDerivAt.inv (c := fun t : ℝ => t) (c' := 1) (x := log x)
+        · simpa using! HasDerivAt.inv (c := fun t : ℝ => t) (c' := 1) (x := log x)
             (hasDerivAt_id' (log x))
             (by simp only [ne_eq, log_eq_zero, not_or]; refine ⟨?_, ?_, ?_⟩ <;> linarith)
         · apply hasDerivAt_log; linarith)
@@ -881,7 +880,7 @@ theorem pi_alt : ∃ c : ℝ → ℝ, c =o[atTop] (fun _ ↦ (1 : ℝ)) ∧
   · apply IsLittleO.congr' (f₁ := (fun x ↦ f x + f x * f' x + f' x)) _ _ (by rfl)
     · apply IsLittleO.add _ hf'
       apply IsLittleO.add hf
-      convert hf.mul hf'
+      convert! hf.mul hf'
       ring
     · filter_upwards [eventually_ge_atTop 2, h, h'] with x hx h h'
       rw [h, intervalIntegral.integral_of_le hx, ← integral_Icc_eq_integral_Ioc, h']
@@ -910,7 +909,7 @@ theorem pi_alt' :
   rw [this]
   convert hf1.mul_isBigO (f₂ := (fun x ↦ x / log x)) (g₂ := (fun x ↦ x /log x))
       (isBigO_refl ..) using 2
-  all_goals ring
+  all_goals first | ring | rfl
 
 
 lemma pi_nth_prime (n : ℕ) :
@@ -925,7 +924,7 @@ lemma pi_nth_prime_asymp :
   trans (fun (n : ℕ) ↦ ( n + 1 : ℝ))
   · have : Tendsto (fun n ↦ ((nth_prime n) : ℝ)) atTop atTop := by
       apply tendsto_natCast_atTop_iff.mpr tendsto_nth_prime_atTop
-    convert pi_alt'.comp_tendsto this |>.symm
+    convert! pi_alt'.comp_tendsto this |>.symm
     simp only [Function.comp_apply, floor_natCast]
     rw [pi_nth_prime]
     norm_cast
@@ -951,7 +950,7 @@ lemma log_nth_prime_asymp : (fun n ↦ log (nth_prime n)) ~[atTop] (fun n ↦ lo
 
 lemma nth_prime_asymp : (fun n ↦ ((nth_prime n) : ℝ)) ~[atTop] (fun n ↦ n * log n) := by
   have := pi_nth_prime_asymp.mul log_nth_prime_asymp
-  convert this using 1
+  convert! this using 1
   ext n
   simp only [Pi.mul_apply]
   have : log (nth_prime n) ≠ 0 :=by
@@ -991,7 +990,7 @@ theorem pn_asymptotic : ∃ c : ℕ → ℝ, c =o[atTop] (fun _ ↦ (1 : ℝ)) �
     simp
     norm_cast
     grind
-  convert this.add_const (-1 : ℝ) using 2
+  convert! this.add_const (-1 : ℝ) using 2
   norm_num
 
 
@@ -1562,7 +1561,7 @@ theorem prime_between {ε : ℝ} (hε : 0 < ε) :
   rw [eventually_atTop]
   use (max a 1)
   intro b hb
-  rw [ge_iff_le, sup_le_iff] at hb
+  rw [sup_le_iff] at hb
   specialize ha b hb.1
 
   have val_lt : (⌊b⌋₊.primeCounting : ℝ) < ⌊(1 + ε/2) * b⌋₊.primeCounting := by linarith
@@ -1725,9 +1724,9 @@ noncomputable def R (x : ℝ) : ℝ := Psi x - x
 lemma R_isLittleO : R =o[atTop] id := by
   have h_pnt : (fun x => Psi x - x) =o[atTop] (fun x => x) := by
     have h_psi : (fun x => Psi x) ~[atTop] (fun x => x) := by
-      simpa [Psi] using WeakPNT''
+      simpa [Psi] using! WeakPNT''
     exact h_psi
-  convert h_pnt using 1
+  convert! h_pnt using 1
 
 lemma sum_mobius_div_isBigO : (fun x : ℝ => ∑ k ∈ Iic ⌊x⌋₊, (μ k : ℝ) * (x / k)) =O[atTop] id := by
   have h_abs : ∀ x : ℝ, 1 ≤ x → |∑ n ∈ Iic ⌊x⌋₊, (μ n : ℝ) / n| ≤ 1 := by
@@ -1783,8 +1782,8 @@ lemma sum_bounded_of_linear_bound {f : ℝ → ℝ} {ε C : ℝ} (hε : 0 ≤ ε
   ∑ k ∈ Icc 1 ⌊x⌋₊, |f (x / k)| ≤ ε * x * (log x + 1) + C * x := by
     have h_sum_bound : ∑ k ∈ Finset.Icc 1 ⌊x⌋₊, |f (x / k)| ≤ ε * x * ∑ k ∈ Finset.Icc 1 ⌊x⌋₊, (1 / (k : ℝ)) + C * ⌊x⌋₊ := by
       have h_sum_bound : ∀ k ∈ Finset.Icc 1 ⌊x⌋₊, |f (x / k)| ≤ ε * x / k + C := by
-        exact fun k hk => by simpa only [mul_div_assoc] using h (x / k) (by rw [le_div_iff₀ (Nat.cast_pos.mpr <| Finset.mem_Icc.mp hk |>.1)] ; nlinarith [Nat.floor_le (show 0 ≤ x by positivity), show (k : ℝ) ≤ ⌊x⌋₊ by exact_mod_cast Finset.mem_Icc.mp hk |>.2])
-      convert Finset.sum_le_sum h_sum_bound using 1 ; norm_num [div_eq_mul_inv, Finset.mul_sum _ _ _, Finset.sum_add_distrib, mul_comm]
+        exact fun k hk => by simpa only [mul_div_assoc] using! h (x / k) (by rw [le_div_iff₀ (Nat.cast_pos.mpr <| Finset.mem_Icc.mp hk |>.1)] ; nlinarith [Nat.floor_le (show 0 ≤ x by positivity), show (k : ℝ) ≤ ⌊x⌋₊ by exact_mod_cast Finset.mem_Icc.mp hk |>.2])
+      convert! Finset.sum_le_sum h_sum_bound using 1 ; norm_num [div_eq_mul_inv, Finset.mul_sum _ _ _, Finset.sum_add_distrib, mul_comm]
     have h_harmonic : ∀ n : ℕ, 1 ≤ n → ∑ k ∈ Finset.Icc 1 n, (1 / (k : ℝ)) ≤ Real.log n + 1 := by
       intro n _hn
       have h := harmonic_le_one_add_log n
@@ -1957,8 +1956,8 @@ theorem mu_pnt : (fun x : ℝ ↦ ∑ n ∈ range ⌊x⌋₊, μ n) =o[atTop] fu
     have h_bound : (fun x : ℝ => ∑ n ∈ Finset.range ⌊x⌋₊, (μ n : ℝ)) =o[atTop] (fun x : ℝ => x) := by
       have h_sum : (fun x : ℝ => ∑ n ∈ Finset.range (⌊x⌋₊ + 1), (μ n : ℝ)) =o[atTop] (fun x : ℝ => x) := by
         have h_moebius_sum : (fun x : ℝ => ∑ n ∈ Finset.Iic ⌊x⌋₊, (μ n : ℝ)) =o[atTop] (fun x : ℝ => x) := by
-          convert M_isLittleO using 1
-        simpa only [Finset.range_eq_Ico] using h_moebius_sum
+          convert! M_isLittleO using 1
+        simpa only [Finset.range_eq_Ico] using! h_moebius_sum
       have h_mu_floor : (fun x : ℝ => (μ ⌊x⌋₊ : ℝ)) =o[atTop] (fun x : ℝ => x) := by
         rw [Asymptotics.isLittleO_iff_tendsto'] <;> norm_num
         · refine squeeze_zero_norm (a := fun x : ℝ => 1 / |x|) ?_ ?_
@@ -2071,8 +2070,19 @@ lemma lambda_eq_sum_sq_dvd_mu (n : ℕ) (hn : n ≠ 0) :
         rw [ Finset.sum_congr rfl h_inner_sum_cases ] ; norm_num [ Finset.sum_ite ] ; rcases Nat.even_or_odd' ( a p ) with ⟨ k, hk | hk ⟩ <;> norm_num [ hk, pow_add, pow_mul ]
         · ring_nf
           norm_num [ show ∀ x : ℕ, k * 2 - x * 2 = 0 ↔ x ≥ k by intro x; exact ⟨ fun hx => by contrapose! hx; exact Nat.ne_of_gt <| Nat.sub_pos_of_lt <| by linarith, fun hx => Nat.sub_eq_zero_of_le <| by linarith ⟩ ];
-          rw [ show Finset.filter ( fun x => k ≤ x ) ( Finset.range ( 1 + k ) ) = { k } from Finset.eq_singleton_iff_unique_mem.mpr ⟨ Finset.mem_filter.mpr ⟨ Finset.mem_range.mpr <| by linarith, by linarith ⟩, fun x hx => by linarith [ Finset.mem_filter.mp hx, Finset.mem_range.mp ( Finset.mem_filter.mp hx |>.1 ) ] ⟩ ] ; norm_num;
-          intros; omega;
+          have h_first :
+              Finset.filter (fun x => k ≤ x) (Finset.range (k + 1)) = {k} := by
+            ext x
+            simp
+            omega
+          have h_second :
+              Finset.filter (fun x => k * 2 - x * 2 = 1)
+                (Finset.filter (fun x => ¬2 * k - 2 * x = 0) (Finset.range (k + 1))) = ∅ := by
+            ext x
+            simp
+            omega
+          rw [h_first, h_second]
+          norm_num
         · ring_nf
           norm_num [ Nat.add_div ];
           rw [ Finset.card_eq_zero.mpr ] <;> norm_num;
@@ -2145,7 +2155,7 @@ lemma sum_mu_div_sq_isLittleO : (fun N : ℕ ↦ ∑ d ∈ Finset.Icc 1 (Nat.sqr
               have h_bounded : BddAbove (Set.image (fun n : ℕ => |∑ k ∈ Finset.Iic n, (μ k : ℝ)|) (Set.image (fun x => ⌊x⌋₊) (Set.Icc 1 a))) := by
                 exact Set.Finite.bddAbove <| h_finite.image _;
               exact ⟨ h_bounded.choose, Set.forall_mem_image.2 fun x hx => h_bounded.choose_spec <| Set.mem_image_of_mem _ <| Set.mem_image_of_mem _ hx ⟩;
-            convert h_bounded using 1;
+            convert! h_bounded using 1;
           exact ⟨ h_bounded.choose, fun x hx => h_bounded.choose_spec ⟨ x, hx, rfl ⟩ ⟩;
         exact ⟨ Max.max C 0, fun x hx => if hx' : x ≤ a then le_trans ( hC x ⟨ hx, hx' ⟩ ) ( le_max_left _ _ ) |> le_trans <| le_add_of_nonneg_left <| by positivity else le_trans ( ha x <| le_of_not_ge hx' ) <| by rw [ abs_of_nonneg <| by linarith ] ; exact le_add_of_nonneg_right <| by positivity ⟩;
       assumption;
@@ -2305,7 +2315,7 @@ lemma sum_mobius_floor_tail_isLittleO (K : ℕ) (hK : 0 < K) :
             · norm_num [abs_div]
               exact ⟨1, fun x hx => mul_le_of_le_one_left (by positivity) (mod_cast by exact abs_moebius_le_one)⟩
             · exact tendsto_const_nhds.div_atTop (tendsto_norm_atTop_atTop)
-          convert h_M.sub (show (fun x : ℝ => (μ 0 : ℝ)) =o[Filter.atTop] fun x : ℝ => x from ?_) using 2 <;> norm_num [Finset.sum_range_succ']
+          convert! h_M.sub (show (fun x : ℝ => (μ 0 : ℝ)) =o[Filter.atTop] fun x : ℝ => x from ?_) using 2 <;> norm_num [Finset.sum_range_succ']
           erw [Finset.sum_Ico_eq_sub _ _] <;> norm_num [Finset.sum_range_succ']
         intros k hk_pos hk_lt_K
         have h_M_x_over_k : (fun x : ℝ => ∑ n ∈ Finset.Ioc ⌊x / (k + 1 : ℝ)⌋₊ ⌊x / (k : ℝ)⌋₊, (μ n : ℝ)) = (fun x : ℝ => ∑ n ∈ Finset.Icc 1 ⌊x / (k : ℝ)⌋₊, (μ n : ℝ)) - (fun x : ℝ => ∑ n ∈ Finset.Icc 1 ⌊x / (k + 1 : ℝ)⌋₊, (μ n : ℝ)) := by
@@ -2336,7 +2346,7 @@ lemma sum_mobius_floor_tail_isLittleO (K : ℕ) (hK : 0 < K) :
         rw [Asymptotics.isLittleO_iff_tendsto']
         · have h_sum_little_o : ∀ k ∈ Finset.Ico 1 K, Filter.Tendsto (fun x : ℝ => (∑ n ∈ Finset.Ioc ⌊x / (k + 1 : ℝ)⌋₊ ⌊x / (k : ℝ)⌋₊, (μ n : ℝ)) / x) Filter.atTop (nhds 0) := by
             intro k hk; specialize h_M_x_over_k k (Finset.mem_Ico.mp hk |>.1) (Finset.mem_Ico.mp hk |>.2) ; rw [Asymptotics.isLittleO_iff_tendsto'] at h_M_x_over_k <;> aesop
-          simpa [Finset.sum_div _ _ _, mul_div_assoc] using tendsto_finset_sum _ fun k hk => h_sum_little_o k hk |> Filter.Tendsto.const_mul _
+          simpa [Finset.sum_div _ _ _, mul_div_assoc] using tendsto_finsetSum _ fun k hk => h_sum_little_o k hk |> Filter.Tendsto.const_mul _
         · filter_upwards [Filter.eventually_gt_atTop 0] with x hx hx' using absurd hx' hx.ne'
       exact h_sum_o_x.congr'
         (by filter_upwards [Filter.eventually_ge_atTop 1] with x hx using by rw [h_group x hx])

@@ -3,9 +3,10 @@ import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Data.Int.Star
 import Mathlib.Data.Rat.Cast.OfScientific
-import Mathlib.Data.Real.StarOrdered
+import Mathlib.Algebra.Order.Star.Real
 import Mathlib.NumberTheory.Harmonic.EulerMascheroni
 import Mathlib.Topology.Algebra.Module.ModuleTopology
+import PrimeNumberTheoremAnd.IEANTN.LogTables
 
 open Real Finset
 
@@ -255,7 +256,7 @@ private lemma log_ineq_4 (u : ℝ) (hu : 0 < u) :
 private lemma hasDerivAt_log_one_add (x : ℝ) (h : (0 : ℝ) < 1 + x) :
     HasDerivAt (fun u => Real.log (1 + u)) (1 / (1 + x)) x := by
   have := (Real.hasDerivAt_log h.ne').comp x ((hasDerivAt_id x).const_add 1)
-  convert this using 1; ring
+  convert! this using 1; ring
 
 private lemma hasDerivAt_one_add_mul_log (x : ℝ) (h1p : (0 : ℝ) < 1 + x) :
     HasDerivAt (fun u => (1 + u) * Real.log (1 + u)) (Real.log (1 + x) + 1) x := by
@@ -490,6 +491,5 @@ lemma hγ_lo : (0.577215 : ℝ) ≤ Real.eulerMascheroniConstant := by
       _ ≤ eulerMascheroniConstant := le_of_lt (γ₃_lower_bound 16 (by norm_num))
   -- γ₃ 16 = H(16) - log 16 - 1/32 + 1/3072 - 1/7864320
   -- We bound log 16 = 4 * log 2 < 4 * 0.6931471808
-  norm_num [γ₃]
-  rw [show (16 : ℝ) = 2 ^ 4 by norm_num]
-  grind [Real.log_pow, Real.log_two_lt_d9]
+  norm_num [γ₃, LogTables.log_16]
+  linarith [LogTables.log_2_lt_d9]
